@@ -1,0 +1,25 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# User-specific financial data & logs (local privacy preservation)
+portfolio.json
+history.json
+snapshot.log
+*.log
+*.tmp
+
+# Operating System Files
+.DS_Store
+Thumbs.db

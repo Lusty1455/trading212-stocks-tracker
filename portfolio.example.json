@@ -1,0 +1,19 @@
+{
+  "base_currency": "GBP",
+  "cash": {
+    "GBP": 10.0,
+    "USD": 0.0
+  },
+  "holdings": [
+    {
+      "symbol": "GOOGL",
+      "name": "Alphabet Inc. (Class A)",
+      "shares": 0.05,
+      "average_price_usd": 340.0,
+      "average_price_gbp": 250.0,
+      "cost_basis": 12.5,
+      "cost_currency": "GBP",
+      "added_at": "2026-09-18"
+    }
+  ]
+}
