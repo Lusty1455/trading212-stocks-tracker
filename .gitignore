@@ -28,3 +28,7 @@ snapshot.log
 # Operating System Files
 .DS_Store
 Thumbs.db
+
+# AI Context and Patch Files
+ai_task_context.md
+ai_patch.md

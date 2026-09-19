@@ -36,6 +36,22 @@ def main():
         s = storage.get_storage()
         print("\n💾 当前存储引擎状态与统计:")
         print(json.dumps(s.get_stats(), indent=2, ensure_ascii=False) + "\n")
+    elif len(sys.argv) > 1 and sys.argv[1] in ("pack", "--pack", "prompt"):
+        import packer
+        task = ""
+        include_all = False
+        files = None
+        args = sys.argv[2:]
+        task_parts = []
+        for arg in args:
+            if arg in ("--all", "-a"):
+                include_all = True
+            elif arg.startswith("--files="):
+                files = [f.strip() for f in arg.split("=")[1].split(",")]
+            else:
+                task_parts.append(arg)
+        task = " ".join(task_parts)
+        packer.run_packer(task=task, include_all=include_all, files=files)
     else:
         import cli
         cli.main()
