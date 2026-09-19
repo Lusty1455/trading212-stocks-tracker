@@ -608,7 +608,7 @@ def index_html():
           <div>
             <div class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
               <span>更新日志</span>
-              <span class="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">v1.4.0</span>
+              <span class="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">v1.4.1</span>
             </div>
             <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">版本功能与演进记录</div>
           </div>
@@ -1085,10 +1085,10 @@ def index_html():
       <div class="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800 text-xs">
         <span class="text-slate-400 dark:text-slate-500 font-mono" id="snapModalIdFooter"></span>
         <div class="flex items-center gap-2">
-          <button id="snapModalDeleteBtn" class="py-1.5 px-3.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 font-medium transition flex items-center gap-1 shadow-sm">
-            <span>🗑️</span> 移入回收站
+          <button id="snapModalDeleteBtn" onclick="handleDeleteCurrentSnapshot()" type="button" class="py-1.5 px-3.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 font-medium transition flex items-center gap-1.5 shadow-sm cursor-pointer hover:scale-105 active:scale-95">
+            <span id="snapModalDeleteIcon">🗑️</span> <span id="snapModalDeleteText">移入回收站</span>
           </button>
-          <button onclick="closeSnapshotModal()" class="py-1.5 px-5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium transition">关闭</button>
+          <button onclick="closeSnapshotModal()" class="py-1.5 px-5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium transition cursor-pointer">关闭</button>
         </div>
       </div>
     </div>
@@ -1221,7 +1221,7 @@ def index_html():
               <span>系统版本更新日志</span>
               <span class="text-xs font-mono font-semibold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">Changelog</span>
             </h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">结合 Git 提交历史整理 · 当前版本 v1.4.0 (支持 SQLite & Cloudflare D1)</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">结合 Git 提交历史整理 · 当前版本 v1.4.1 (交互体验与回收站优化)</p>
           </div>
         </div>
         <button onclick="closeChangelogModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-2xl leading-none cursor-pointer">&times;</button>
@@ -1236,7 +1236,7 @@ def index_html():
       <div class="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800 text-xs shrink-0">
         <div class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-mono">
           <span>📦</span>
-          <span>本地 Git 同步记录 · 共 7 个版本发布</span>
+          <span>本地 Git 同步记录 · 共 8 个版本发布</span>
         </div>
         <button onclick="closeChangelogModal()" class="py-1.5 px-5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium transition cursor-pointer">
           关闭
@@ -1245,12 +1245,135 @@ def index_html():
     </div>
   </div>
 
+  <!-- Universal In-App Confirmation Modal (全局交互确认弹窗，免疫浏览器原生弹窗拦截) -->
+  <div id="appConfirmModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center z-[80] p-4 transition-all">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 transition-colors">
+      <div class="flex items-start gap-3">
+        <div id="confirmModalIcon" class="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900/40 flex items-center justify-center text-xl shrink-0">
+          🗑️
+        </div>
+        <div class="space-y-1">
+          <h3 id="confirmModalTitle" class="font-bold text-slate-900 dark:text-white text-base">操作确认</h3>
+          <p id="confirmModalMsg" class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed"></p>
+          <p id="confirmModalSubMsg" class="text-[11px] text-slate-400 dark:text-slate-500 font-mono mt-1"></p>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+        <button id="confirmModalCancelBtn" type="button" class="py-2 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium transition cursor-pointer">
+          取消
+        </button>
+        <button id="confirmModalActionBtn" type="button" class="py-2 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold transition shadow-md cursor-pointer flex items-center gap-1.5">
+          <span id="confirmModalActionText">确认</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Toast Notification System (全局轻量提示系统) -->
+  <div id="appToast" class="fixed bottom-6 right-6 z-[100] transform transition-all duration-300 ease-out translate-y-12 opacity-0 pointer-events-none max-w-sm">
+    <div id="appToastContent" class="flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl text-xs font-medium border bg-slate-900/90 text-slate-100 border-slate-700 backdrop-blur-md">
+      <span id="appToastIcon" class="text-base">🔔</span>
+      <span id="appToastText" class="flex-1">提示信息</span>
+      <button onclick="dismissToast()" class="text-slate-400 hover:text-slate-200 ml-1 text-sm font-bold leading-none cursor-pointer">&times;</button>
+    </div>
+  </div>
+
   <script>
     let portfolioData = null;
     let historyDataCache = [];
+    let currentActiveSnapshotId = null;
     let allocChart = null;
     let pnlChart = null;
     let activeModalMode = 'amount';
+
+    // ===== 全局轻量 Toast 提示系统 =====
+    let toastTimeout = null;
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('appToast');
+      const content = document.getElementById('appToastContent');
+      const icon = document.getElementById('appToastIcon');
+      const text = document.getElementById('appToastText');
+      if (!toast || !content) return;
+
+      if (toastTimeout) clearTimeout(toastTimeout);
+      text.innerText = message;
+
+      if (type === 'success') {
+        icon.innerText = '✅';
+        content.className = 'flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl text-xs font-medium border bg-emerald-900/90 text-emerald-100 border-emerald-700/60 backdrop-blur-md';
+      } else if (type === 'error') {
+        icon.innerText = '❌';
+        content.className = 'flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl text-xs font-medium border bg-rose-900/90 text-rose-100 border-rose-700/60 backdrop-blur-md';
+      } else if (type === 'warn') {
+        icon.innerText = '⚠️';
+        content.className = 'flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl text-xs font-medium border bg-amber-900/90 text-amber-100 border-amber-700/60 backdrop-blur-md';
+      } else {
+        icon.innerText = 'ℹ️';
+        content.className = 'flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl text-xs font-medium border bg-slate-900/90 text-slate-100 border-slate-700 backdrop-blur-md';
+      }
+
+      toast.classList.remove('translate-y-12', 'opacity-0', 'pointer-events-none');
+      toast.classList.add('translate-y-0', 'opacity-100', 'pointer-events-auto');
+      toastTimeout = setTimeout(dismissToast, 3500);
+    }
+
+    function dismissToast() {
+      const toast = document.getElementById('appToast');
+      if (toast) {
+        toast.classList.add('translate-y-12', 'opacity-0', 'pointer-events-none');
+        toast.classList.remove('translate-y-0', 'opacity-100', 'pointer-events-auto');
+      }
+    }
+
+    // ===== 内置交互式确认弹窗 (解决 window.confirm 浏览器被拦截/失效) =====
+    let confirmModalResolver = null;
+
+    function showConfirmModal(opts) {
+      return new Promise((resolve) => {
+        confirmModalResolver = resolve;
+        const iconEl = document.getElementById('confirmModalIcon');
+        const titleEl = document.getElementById('confirmModalTitle');
+        const msgEl = document.getElementById('confirmModalMsg');
+        const subMsgEl = document.getElementById('confirmModalSubMsg');
+        const actionBtn = document.getElementById('confirmModalActionBtn');
+        const actionText = document.getElementById('confirmModalActionText');
+
+        if (iconEl) iconEl.innerText = opts.icon || '⚠️';
+        if (titleEl) titleEl.innerText = opts.title || '操作确认';
+        if (msgEl) msgEl.innerText = opts.message || '确定要执行此操作吗？';
+        
+        if (subMsgEl) {
+          if (opts.subMessage) {
+            subMsgEl.innerText = opts.subMessage;
+            subMsgEl.classList.remove('hidden');
+          } else {
+            subMsgEl.classList.add('hidden');
+          }
+        }
+
+        if (actionText) actionText.innerText = opts.confirmText || '确认';
+
+        if (actionBtn) {
+          if (opts.confirmClass) {
+            actionBtn.className = `py-2 px-4 rounded-xl font-semibold transition shadow-md cursor-pointer flex items-center gap-1.5 ${opts.confirmClass}`;
+          } else {
+            actionBtn.className = 'py-2 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold transition shadow-md cursor-pointer flex items-center gap-1.5';
+          }
+        }
+
+        const modal = document.getElementById('appConfirmModal');
+        if (modal) modal.classList.remove('hidden');
+      });
+    }
+
+    function closeAppConfirmModal(result = false) {
+      const modal = document.getElementById('appConfirmModal');
+      if (modal) modal.classList.add('hidden');
+      if (confirmModalResolver) {
+        confirmModalResolver(result);
+        confirmModalResolver = null;
+      }
+    }
 
     function initTheme() {
       const saved = localStorage.getItem('theme');
@@ -1762,16 +1885,29 @@ def index_html():
         cashEl.innerText = `现金余额: ${formatCurrency(snap.cash_value, sym)}`;
       }
 
-      document.getElementById('snapModalIdFooter').innerText = `快照唯一标识: ${snap.id || snap.timestamp || 'N/A'}`;
+      currentActiveSnapshotId = snap.id || snap.timestamp || snap.date;
+      document.getElementById('snapModalIdFooter').innerText = `快照唯一标识: ${currentActiveSnapshotId || 'N/A'}`;
+      
       const snapDelBtn = document.getElementById('snapModalDeleteBtn');
-      if (snapDelBtn) {
-        snapDelBtn.onclick = () => confirmDeleteSnapshot(snap.id || snap.timestamp || snap.date);
-      }
+      const delText = document.getElementById('snapModalDeleteText');
+      const delIcon = document.getElementById('snapModalDeleteIcon');
+      if (snapDelBtn) snapDelBtn.disabled = false;
+      if (delText) delText.innerText = '移入回收站';
+      if (delIcon) delIcon.innerText = '🗑️';
+
       document.getElementById('snapshotModal').classList.remove('hidden');
     }
 
     function closeSnapshotModal() {
       document.getElementById('snapshotModal').classList.add('hidden');
+    }
+
+    async function handleDeleteCurrentSnapshot() {
+      if (!currentActiveSnapshotId) {
+        showToast('未找到有效快照标识', 'error');
+        return;
+      }
+      await confirmDeleteSnapshot(currentActiveSnapshotId);
     }
 
     async function saveStockHolding() {
@@ -1811,12 +1947,26 @@ def index_html():
     }
 
     async function removeHolding(symbol) {
-      if (!confirm(`确定要移除股票 ${symbol} 的持仓吗？`)) return;
+      const confirmed = await showConfirmModal({
+        title: '移除股票持仓',
+        message: `确定要从当前持仓列表中移除股票 ${symbol} 吗？`,
+        subMessage: '移除后系统将不再追踪此股票的实时行情与估值。',
+        confirmText: '确认移除',
+        confirmClass: 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-500/30',
+        icon: '📉'
+      });
+      if (!confirmed) return;
       try {
-        await fetch(`/api/holding/${symbol}`, { method: 'DELETE' });
-        loadData();
+        const res = await fetch(`/api/holding/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
+        const json = await res.json();
+        if (json.status === 'ok') {
+          loadData();
+          showToast(`股票 ${symbol} 持仓已移除`, 'success');
+        } else {
+          showToast('移除失败: ' + (json.detail || '未知错误'), 'error');
+        }
       } catch (e) {
-        alert('删除失败: ' + e);
+        showToast('删除失败: ' + e, 'error');
       }
     }
 
@@ -2022,20 +2172,29 @@ def index_html():
         if (json.status === 'ok') {
           await loadHistory();
           await fetchTrashData();
+          if (typeof updateStorageUI === 'function') updateStorageUI();
+          showToast(json.message || '快照已成功还原至有效历史列表', 'success');
         } else {
-          alert('还原失败: ' + (json.detail || '未知错误'));
+          showToast('还原失败: ' + (json.detail || '未知错误'), 'error');
         }
       } catch (e) {
-        alert('网络错误: ' + e);
+        showToast('网络错误: ' + e, 'error');
       }
     }
 
     async function confirmPurgeTrash(trashId) {
       const isAll = trashId === 'all';
-      const promptText = isAll 
-        ? '⚠️ 警告：确定要清空整个回收站吗？所有快照将被永久彻底抹去，无法再还原！' 
-        : '确定要彻底删除此快照吗？删除后将无法恢复。';
-      if (!confirm(promptText)) return;
+      const confirmed = await showConfirmModal({
+        title: isAll ? '清空回收站' : '彻底清除快照',
+        message: isAll 
+          ? '确定要清空整个回收站吗？所有快照将被永久彻底抹去，无法再还原！' 
+          : '确定要彻底删除此快照吗？删除后将无法恢复。',
+        subMessage: '此操作为永久物理删除，无法恢复，请谨慎操作。',
+        confirmText: isAll ? '确认清空全部' : '彻底删除',
+        confirmClass: 'bg-rose-700 hover:bg-rose-600 text-white shadow-rose-600/30',
+        icon: '⚠️'
+      });
+      if (!confirmed) return;
 
       try {
         const url = isAll ? '/api/trash' : `/api/trash/${encodeURIComponent(trashId)}`;
@@ -2043,11 +2202,13 @@ def index_html():
         const json = await res.json();
         if (json.status === 'ok') {
           await fetchTrashData();
+          if (typeof updateStorageUI === 'function') updateStorageUI();
+          showToast(json.message || '回收站已成功清理', 'success');
         } else {
-          alert('彻底删除失败: ' + (json.detail || '未知错误'));
+          showToast('彻底删除失败: ' + (json.detail || '未知错误'), 'error');
         }
       } catch (e) {
-        alert('网络错误: ' + e);
+        showToast('网络错误: ' + e, 'error');
       }
     }
 
@@ -2085,7 +2246,7 @@ def index_html():
       const startDate = document.getElementById('rangeStartDate').value;
       const endDate = document.getElementById('rangeEndDate').value;
       if (!startDate && !endDate) {
-        alert('请选择起始日期或结束日期');
+        showToast('请选择起始日期或结束日期', 'warn');
         return;
       }
 
@@ -2093,9 +2254,15 @@ def index_html():
         ? `${startDate} 至 ${endDate}` 
         : (startDate ? `从 ${startDate} 起的所有快照` : `截至 ${endDate} 的所有快照`);
 
-      if (!confirm(`确定要将【${label}】范围内的快照移入回收站吗？\n\n已删除快照将在回收站中保留 30 天，支持随时一键还原。`)) {
-        return;
-      }
+      const confirmed = await showConfirmModal({
+        title: '按日期范围移入回收站',
+        message: `确定要将【${label}】范围内的快照移入回收站吗？`,
+        subMessage: '已删除快照将在回收站中保留 30 天，支持随时一键还原。',
+        confirmText: '删除该范围快照',
+        confirmClass: 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-500/30',
+        icon: '📅'
+      });
+      if (!confirmed) return;
 
       try {
         const res = await fetch('/api/snapshots/delete-range', {
@@ -2108,18 +2275,32 @@ def index_html():
           closeSnapshotModal();
           await loadHistory();
           await fetchTrashData();
-          alert(`✅ ${json.message || '选定范围快照已成功移入回收站'}`);
+          if (typeof updateStorageUI === 'function') updateStorageUI();
+          showToast(`✅ ${json.message || '选定范围快照已成功移入回收站'}`, 'success');
         } else {
-          alert('删除失败: ' + (json.detail || '未知错误'));
+          showToast('删除失败: ' + (json.detail || '未知错误'), 'error');
         }
       } catch (e) {
-        alert('网络请求失败: ' + e);
+        showToast('网络请求失败: ' + e, 'error');
       }
     }
 
     async function confirmDeleteSnapshot(identifier) {
       if (!identifier) return;
-      if (!confirm(`确定要将此快照记录移入回收站吗？\n\n快照将在回收站中保留 30 天，到期前可随时一键恢复。`)) return;
+      const confirmed = await showConfirmModal({
+        title: '移入快照回收站',
+        message: `确定要将此快照记录 (${identifier}) 移入回收站吗？`,
+        subMessage: '快照将在回收站中安全保留 30 天，到期前可随时一键恢复。',
+        confirmText: '移入回收站',
+        confirmClass: 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-500/30',
+        icon: '🗑️'
+      });
+      if (!confirmed) return;
+
+      const delBtn = document.getElementById('snapModalDeleteBtn');
+      const delText = document.getElementById('snapModalDeleteText');
+      if (delBtn) delBtn.disabled = true;
+      if (delText) delText.innerText = '移入中...';
 
       try {
         const res = await fetch(`/api/snapshot/${encodeURIComponent(identifier)}`, { method: 'DELETE' });
@@ -2128,11 +2309,16 @@ def index_html():
           closeSnapshotModal();
           await loadHistory();
           await fetchTrashData();
+          if (typeof updateStorageUI === 'function') updateStorageUI();
+          showToast(json.message || '快照已成功移入回收站 (保留30天)', 'success');
         } else {
-          alert('删除失败: ' + (json.detail || '未知错误'));
+          showToast('移入回收站失败: ' + (json.detail || '未知错误'), 'error');
         }
       } catch (e) {
-        alert('网络错误: ' + e);
+        showToast('网络请求错误: ' + e, 'error');
+      } finally {
+        if (delBtn) delBtn.disabled = false;
+        if (delText) delText.innerText = '移入回收站';
       }
     }
 
@@ -2154,6 +2340,15 @@ def index_html():
     });
     document.getElementById('changelogModal').addEventListener('click', (e) => {
       if (e.target.id === 'changelogModal') closeChangelogModal();
+    });
+    document.getElementById('appConfirmModal').addEventListener('click', (e) => {
+      if (e.target.id === 'appConfirmModal') closeAppConfirmModal(false);
+    });
+    document.getElementById('confirmModalCancelBtn').addEventListener('click', () => {
+      closeAppConfirmModal(false);
+    });
+    document.getElementById('confirmModalActionBtn').addEventListener('click', () => {
+      closeAppConfirmModal(true);
     });
 
     // ===== Sidebar (边栏) 交互逻辑 =====
@@ -2208,11 +2403,24 @@ def index_html():
     // ===== 更新日志 (Changelog) 数据与逻辑 =====
     const CHANGELOG_DATA = [
       {
+        version: "v1.4.1",
+        date: "2026-09-19",
+        commit: "fix/trash",
+        title: "交互体验升级：彻底修复移入回收站失效问题，引入内置交互确认弹窗与全局 Toast",
+        is_latest: true,
+        items: [
+          { type: "fix", icon: "🐛", tag: "按钮修复", text: "彻底修复快照详情弹窗中「移入回收站」按钮在内嵌环境或特定浏览器下因 window.confirm 被静默屏蔽而点击无响应的问题" },
+          { type: "feat", icon: "🛡️", tag: "内置弹窗", text: "封装 showConfirmModal 全局交互确认弹窗，采用 z-[80] backdrop-blur 高层级遮罩与双主题适配，免疫任何浏览器原生弹窗拦截" },
+          { type: "feat", icon: "🔔", tag: "全局Toast", text: "引入现代化浮动 Toast 消息通知系统，快照移入回收站、还原、彻底清理等均呈现即时丝滑的状态与错误反馈" },
+          { type: "arch", icon: "⚡", tag: "状态绑定", text: "重构快照详情弹窗的事件绑定机制，解绑匿名闭包，采用明确的全局活跃快照标识、加载状态指示与防重复提交保护" }
+        ]
+      },
+      {
         version: "v1.4.0",
         date: "2026-09-19",
         commit: "feat/db",
         title: "存储架构升级：引入存储适配器模式与 SQLite 数据库支持 (兼容 Cloudflare D1)",
-        is_latest: true,
+        is_latest: false,
         items: [
           { type: "arch", icon: "💾", tag: "存储解耦", text: "设计抽象存储适配器基类 BaseStorage，使业务计算引擎、快照归档与底层持久化彻底解耦" },
           { type: "feat", icon: "📄", tag: "保留纯JSON", text: "通过 JSONStorage 适配器 100% 完整保留原有 portfolio.json / history.json 纯文本运行模式，向下完全兼容" },
@@ -2360,6 +2568,7 @@ def index_html():
       if (e.key === 'Escape') {
         document.querySelectorAll('.popover-container.active').forEach(c => c.classList.remove('active'));
         if (isSidebarOpen) closeSidebar();
+        closeAppConfirmModal(false);
         closeChangelogModal();
         closeSnapshotModal();
         closeSnapshotManagerModal();
