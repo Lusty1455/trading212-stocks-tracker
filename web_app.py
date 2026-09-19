@@ -16,6 +16,10 @@ from portfolio_engine import (
     get_history,
     get_snapshot_detail,
     delete_snapshot,
+    delete_snapshots_by_date_range,
+    get_trash,
+    restore_snapshot_from_trash,
+    purge_trash,
     clear_all_snapshots,
     load_portfolio,
     verify_portfolio_integrity
@@ -62,6 +66,11 @@ class HoldingRequest(BaseModel):
 class CashRequest(BaseModel):
     gbp: Optional[float] = None
     usd: Optional[float] = None
+
+
+class DateRangeDeleteRequest(BaseModel):
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
 
 
 @app.get("/api/portfolio")
@@ -146,12 +155,21 @@ def api_get_snapshot(identifier: str):
 @app.delete("/api/snapshot/{identifier}")
 def api_delete_snapshot(identifier: str):
     try:
-        success = delete_snapshot(identifier)
+        success = delete_snapshot(identifier, soft_delete=True)
         if not success:
             raise HTTPException(status_code=404, detail="未找到要删除的快照")
-        return {"status": "ok", "message": "快照删除成功"}
+        return {"status": "ok", "message": "快照已移入回收站（可保留30天并随时还原）"}
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/snapshots/delete-range")
+def api_delete_snapshots_range(req: DateRangeDeleteRequest):
+    try:
+        count = delete_snapshots_by_date_range(req.start_date, req.end_date, soft_delete=True)
+        return {"status": "ok", "deleted_count": count, "message": f"已成功将 {count} 条快照移入回收站"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -159,8 +177,48 @@ def api_delete_snapshot(identifier: str):
 @app.delete("/api/snapshots")
 def api_clear_snapshots():
     try:
-        clear_all_snapshots()
-        return {"status": "ok", "message": "已清空所有快照"}
+        count = clear_all_snapshots(soft_delete=True)
+        return {"status": "ok", "deleted_count": count, "message": f"已将所有 {count} 条快照移入回收站"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/trash")
+def api_get_trash():
+    try:
+        items = get_trash()
+        return {"status": "ok", "trash": items, "count": len(items)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/trash/restore/{trash_id}")
+def api_restore_trash(trash_id: str):
+    try:
+        success = restore_snapshot_from_trash(trash_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="回收站中未找到该快照或已超期自动清除")
+        return {"status": "ok", "message": "快照已成功还原至历史记录"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/trash/{trash_id}")
+def api_purge_trash_item(trash_id: str):
+    try:
+        purged = purge_trash(trash_id)
+        return {"status": "ok", "purged": purged, "message": "已彻底删除该快照记录"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/trash")
+def api_purge_all_trash():
+    try:
+        purged = purge_trash("all")
+        return {"status": "ok", "purged": purged, "message": f"回收站已清空，彻底清除 {purged} 条记录"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -451,8 +509,8 @@ def index_html():
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">精确记录每次快照时刻的系统时间与纽约时间，点击表格中任意一行即可展开当时持仓仓位与英镑估值明细</p>
         </div>
         <div class="flex items-center gap-2">
-          <button onclick="openDeleteSnapshotModal()" title="删除/管理历史快照" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:hover:bg-rose-900/70 dark:text-rose-400 dark:border-rose-500/40 text-xs font-semibold shadow-sm transition hover:scale-105 active:scale-95">
-            <span>🗑️</span> 删除快照
+          <button onclick="openSnapshotManagerModal()" title="历史快照管理与回收站" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 dark:border-slate-700 text-xs font-semibold shadow-sm transition hover:scale-105 active:scale-95">
+            <span>⚙️</span> 快照管理
           </button>
           <button onclick="recordSnapshot()" title="立即记录当前快照" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md transition hover:scale-105 active:scale-95">
             <span>📷</span> 记录当前快照
@@ -664,7 +722,7 @@ def index_html():
         <span class="text-slate-400 dark:text-slate-500 font-mono" id="snapModalIdFooter"></span>
         <div class="flex items-center gap-2">
           <button id="snapModalDeleteBtn" class="py-1.5 px-3.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 font-medium transition flex items-center gap-1 shadow-sm">
-            <span>🗑️</span> 删除此快照
+            <span>🗑️</span> 移入回收站
           </button>
           <button onclick="closeSnapshotModal()" class="py-1.5 px-5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium transition">关闭</button>
         </div>
@@ -672,43 +730,99 @@ def index_html():
     </div>
   </div>
 
-  <!-- Delete Snapshot Modal -->
-  <div id="deleteSnapshotModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 transition-colors">
+  <!-- Snapshot Manager & Recycle Bin Modal -->
+  <div id="snapshotManagerModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 transition-colors">
+      <!-- Modal Header -->
       <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-        <div class="flex items-center gap-2">
-          <span class="text-xl">🗑️</span>
+        <div class="flex items-center gap-2.5">
+          <span class="text-2xl">⚙️</span>
           <div>
-            <h3 class="font-bold text-lg text-slate-900 dark:text-white">管理与删除历史快照</h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400">支持单条删除、一键撤销最近快照或清空全部历史记录</p>
+            <h3 class="font-bold text-lg text-slate-900 dark:text-white">快照管理与回收站</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">支持选定日期范围批量删除；已删除快照在回收站保留 30 天，支持一键还原</p>
           </div>
         </div>
-        <button onclick="closeDeleteSnapshotModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg">&times;</button>
+        <button onclick="closeSnapshotManagerModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg">&times;</button>
       </div>
 
-      <!-- Quick Actions -->
-      <div class="grid grid-cols-2 gap-2.5">
-        <button onclick="confirmDeleteSnapshot('latest')" class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50 text-xs font-semibold transition shadow-sm">
-          <span>↩️</span> 撤销/删除最新快照
+      <!-- Tabs / View Switcher -->
+      <div class="flex border-b border-slate-200 dark:border-slate-800 gap-1 pb-1">
+        <button id="tabActiveSnapshotsBtn" onclick="switchManagerTab('snapshots')" class="py-2 px-4 text-xs font-bold rounded-lg transition flex items-center gap-1.5 border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/60 dark:bg-blue-950/40">
+          <span>📅</span> <span>快照列表与日期范围删除</span>
+          <span id="tabActiveCountBadge" class="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-blue-100 dark:bg-blue-900/80 text-blue-700 dark:text-blue-300 font-mono">0</span>
         </button>
-        <button onclick="confirmClearAllSnapshots()" class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 text-xs font-semibold transition shadow-sm">
-          <span>⚠️</span> 清空全部快照
+        <button id="tabTrashBtn" onclick="switchManagerTab('trash')" class="py-2 px-4 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+          <span>♻️</span> <span>回收站 (30天保留)</span>
+          <span id="tabTrashCountBadge" class="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono">0</span>
         </button>
       </div>
 
-      <!-- Snapshot items list -->
-      <div class="space-y-2">
-        <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium px-1">
-          <span>快照历史记录列表</span>
-          <span id="deleteModalCount" class="font-mono">共 0 条</span>
+      <!-- Tab 1: Snapshots List & Date Range Delete -->
+      <div id="tabContentSnapshots" class="space-y-4">
+        <!-- Date Range Deletion Box -->
+        <div class="p-3.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+              <span>📅</span> 选定日期范围删除 (移入回收站)
+            </span>
+            <div class="flex items-center gap-1.5">
+              <button onclick="setDateRangePreset('all')" class="px-2 py-0.5 text-[11px] rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-blue-600 transition">全选全部</button>
+              <button onclick="setDateRangePreset('today')" class="px-2 py-0.5 text-[11px] rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-blue-600 transition">仅今天</button>
+              <button onclick="setDateRangePreset('7d')" class="px-2 py-0.5 text-[11px] rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-blue-600 transition">近7天</button>
+              <button onclick="setDateRangePreset('30d')" class="px-2 py-0.5 text-[11px] rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-blue-600 transition">近30天</button>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <div class="flex items-center gap-1">
+              <span class="text-slate-500">从:</span>
+              <input type="date" id="rangeStartDate" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-blue-500" />
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="text-slate-500">至:</span>
+              <input type="date" id="rangeEndDate" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-blue-500" />
+            </div>
+            <button onclick="confirmDeleteDateRange()" class="ml-auto px-3.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white dark:bg-rose-950/40 dark:hover:bg-rose-600 dark:text-rose-400 dark:hover:text-white border border-rose-200 dark:border-rose-900 font-semibold transition flex items-center gap-1 shadow-sm">
+              <span>🗑️</span> 删除该范围快照
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-400 dark:text-slate-500">💡 提示：选定区间内的快照将安全移入「回收站」保留30天，可随时一键恢复。</p>
         </div>
-        <div id="deleteSnapshotList" class="space-y-2 max-h-64 overflow-y-auto pr-1">
-          <!-- Dynamically populated -->
+
+        <!-- Snapshots List -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium px-1">
+            <span>有效快照记录列表</span>
+            <span id="mgrSnapshotCount" class="font-mono">共 0 条</span>
+          </div>
+          <div id="mgrSnapshotList" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+            <!-- Dynamically populated -->
+          </div>
         </div>
       </div>
 
-      <div class="flex justify-end pt-3 border-t border-slate-200 dark:border-slate-800">
-        <button onclick="closeDeleteSnapshotModal()" class="py-1.5 px-5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium transition">关闭</button>
+      <!-- Tab 2: Recycle Bin (30-day Retention) -->
+      <div id="tabContentTrash" class="hidden space-y-3">
+        <!-- Trash Notice Banner -->
+        <div class="p-3 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 rounded-xl flex items-center justify-between gap-2 text-xs">
+          <div class="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+            <span class="text-base">♻️</span>
+            <span>快照在回收站保留 <strong>30 天</strong>，到期自动永久删除。支持随时一键还原。</span>
+          </div>
+          <button onclick="confirmPurgeTrash('all')" class="shrink-0 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white transition font-medium text-[11px] shadow-sm">
+            清空回收站
+          </button>
+        </div>
+
+        <!-- Trash List -->
+        <div id="mgrTrashList" class="space-y-2 max-h-64 overflow-y-auto pr-1">
+          <!-- Dynamically populated from /api/trash -->
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800 text-xs">
+        <span class="text-slate-400 dark:text-slate-500 font-mono" id="mgrStatusSummary">始终本地私有存储</span>
+        <button onclick="closeSnapshotManagerModal()" class="py-1.5 px-5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium transition">关闭</button>
       </div>
     </div>
   </div>
@@ -891,6 +1005,7 @@ def index_html():
         if (json.status === 'ok') {
           historyDataCache = json.history || [];
           renderHistory(historyDataCache);
+          if (typeof renderManagerSnapshotList === 'function') renderManagerSnapshotList();
         }
       } catch (e) {
         console.error("History fetch error:", e);
@@ -1100,14 +1215,9 @@ def index_html():
           <td class="py-3.5 px-4 text-right font-mono">${formatPnLText(item.daily_pnl, item.daily_pnl_pct, sym)}</td>
           <td class="py-3.5 px-4 text-right">${formatPctBadge(item.daily_pnl_pct)}</td>
           <td class="py-3.5 px-4 text-center">
-            <div class="flex items-center justify-center gap-1.5">
-              <button onclick="event.stopPropagation(); openSnapshotModal('${targetId}')" title="查看仓位明细" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-600/20 dark:text-blue-400 hover:bg-blue-600 hover:text-white transition flex items-center gap-1 shadow-sm">
-                <span>🔍</span> <span>明细</span>
-              </button>
-              <button onclick="event.stopPropagation(); confirmDeleteSnapshot('${targetId}')" title="删除此条快照" class="p-1 text-xs font-semibold rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white border border-rose-200/60 dark:border-rose-900/50 transition flex items-center shadow-sm">
-                <span>🗑️</span>
-              </button>
-            </div>
+            <button onclick="event.stopPropagation(); openSnapshotModal('${targetId}')" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-600/20 dark:text-blue-400 hover:bg-blue-600 hover:text-white transition flex items-center gap-1 mx-auto shadow-sm">
+              <span>🔍</span> <span>明细</span>
+            </button>
           </td>
         `;
         tbody.appendChild(tr);
@@ -1328,33 +1438,76 @@ def index_html():
       }
     }
 
-    function openDeleteSnapshotModal() {
-      renderDeleteSnapshotModal();
-      document.getElementById('deleteSnapshotModal').classList.remove('hidden');
+    let currentManagerTab = 'snapshots';
+    let trashDataCache = [];
+
+    function openSnapshotManagerModal() {
+      switchManagerTab('snapshots');
+      fetchTrashData();
+      renderManagerSnapshotList();
+      document.getElementById('snapshotManagerModal').classList.remove('hidden');
     }
 
-    function closeDeleteSnapshotModal() {
-      document.getElementById('deleteSnapshotModal').classList.add('hidden');
+    function closeSnapshotManagerModal() {
+      document.getElementById('snapshotManagerModal').classList.add('hidden');
     }
 
-    function renderDeleteSnapshotModal() {
-      const listEl = document.getElementById('deleteSnapshotList');
-      const countEl = document.getElementById('deleteModalCount');
+    function switchManagerTab(tab) {
+      currentManagerTab = tab;
+      const snapBtn = document.getElementById('tabActiveSnapshotsBtn');
+      const trashBtn = document.getElementById('tabTrashBtn');
+      const snapContent = document.getElementById('tabContentSnapshots');
+      const trashContent = document.getElementById('tabContentTrash');
+
+      if (tab === 'snapshots') {
+        snapBtn.className = 'py-2 px-4 text-xs font-bold rounded-lg transition flex items-center gap-1.5 border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/60 dark:bg-blue-950/40';
+        trashBtn.className = 'py-2 px-4 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+        snapContent.classList.remove('hidden');
+        trashContent.classList.add('hidden');
+        renderManagerSnapshotList();
+      } else {
+        trashBtn.className = 'py-2 px-4 text-xs font-bold rounded-lg transition flex items-center gap-1.5 border-b-2 border-amber-600 text-amber-700 dark:text-amber-400 bg-amber-50/60 dark:bg-amber-950/40';
+        snapBtn.className = 'py-2 px-4 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+        trashContent.classList.remove('hidden');
+        snapContent.classList.add('hidden');
+        fetchTrashData();
+      }
+    }
+
+    async function fetchTrashData() {
+      try {
+        const res = await fetch('/api/trash');
+        const json = await res.json();
+        if (json.status === 'ok') {
+          trashDataCache = json.trash || [];
+          const countBadge = document.getElementById('tabTrashCountBadge');
+          if (countBadge) countBadge.innerText = trashDataCache.length;
+          renderTrashList();
+        }
+      } catch (e) {
+        console.error("Trash fetch error:", e);
+      }
+    }
+
+    function renderManagerSnapshotList() {
+      const listEl = document.getElementById('mgrSnapshotList');
+      const countEl = document.getElementById('mgrSnapshotCount');
+      const tabBadge = document.getElementById('tabActiveCountBadge');
       if (!listEl) return;
 
-      countEl.innerText = `共 ${historyDataCache.length} 条`;
+      if (countEl) countEl.innerText = `共 ${historyDataCache.length} 条`;
+      if (tabBadge) tabBadge.innerText = historyDataCache.length;
       listEl.innerHTML = '';
 
       if (historyDataCache.length === 0) {
         listEl.innerHTML = `
           <div class="py-8 text-center text-slate-400 text-xs bg-slate-50 dark:bg-slate-800/40 rounded-xl">
-            暂无快照记录
+            暂无有效快照记录
           </div>
         `;
         return;
       }
 
-      // Sort newest first
       const sorted = [...historyDataCache].sort((a, b) => (b.timestamp || b.date || '').localeCompare(a.timestamp || a.date || ''));
 
       sorted.forEach((item, idx) => {
@@ -1384,21 +1537,172 @@ def index_html():
               </div>
             </div>
           </div>
-          <button onclick="confirmDeleteSnapshot('${targetId}')" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white dark:bg-rose-950/50 dark:hover:bg-rose-600 dark:text-rose-400 dark:hover:text-white border border-rose-200 dark:border-rose-900/50 transition shrink-0 ml-2 shadow-sm">
-            删除
+          <button onclick="confirmDeleteSnapshot('${targetId}')" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white dark:bg-rose-950/50 dark:hover:bg-rose-600 dark:text-rose-400 dark:hover:text-white border border-rose-200 dark:border-rose-900/50 transition shrink-0 ml-2 shadow-sm flex items-center gap-1">
+            <span>🗑️</span> 移入回收站
           </button>
         `;
         listEl.appendChild(row);
       });
     }
 
+    function renderTrashList() {
+      const listEl = document.getElementById('mgrTrashList');
+      if (!listEl) return;
+      listEl.innerHTML = '';
+
+      if (trashDataCache.length === 0) {
+        listEl.innerHTML = `
+          <div class="py-10 text-center text-slate-400 text-xs bg-slate-50 dark:bg-slate-800/40 rounded-xl space-y-1">
+            <div class="text-2xl">📭</div>
+            <div class="font-medium text-slate-600 dark:text-slate-300">回收站是空的</div>
+            <div class="text-[11px] text-slate-400">所有被删除的快照会在此保留 30 天，支持一键随时还原</div>
+          </div>
+        `;
+        return;
+      }
+
+      trashDataCache.forEach(item => {
+        const snap = item.snapshot || {};
+        const sym = snap.base_currency === 'GBP' ? '£' : '$';
+        const row = document.createElement('div');
+        row.className = 'flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition gap-2';
+
+        const pnlSign = snap.daily_pnl > 0 ? '+' : '';
+        const pnlClass = snap.daily_pnl > 0 ? 'text-emerald-600 dark:text-emerald-400' : (snap.daily_pnl < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500');
+
+        row.innerHTML = `
+          <div class="min-w-0 space-y-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-mono text-xs font-semibold text-slate-900 dark:text-white">${snap.system_time || snap.timestamp || snap.date}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-medium">
+                ⏳ 还有 ${item.days_remaining} 天自动清除 (删除于 ${item.deleted_at})
+              </span>
+            </div>
+            <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+              当时总值: <strong class="text-slate-700 dark:text-slate-200">${formatCurrency(snap.total_value, sym)}</strong>
+              <span class="mx-1">·</span>
+              单日盈亏: <span class="${pnlClass}">${pnlSign}${formatCurrency(snap.daily_pnl, sym)}</span>
+              ${snap.holdings_count ? `<span class="mx-1">·</span>包含 ${snap.holdings_count} 只持仓` : ''}
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <button onclick="restoreTrashItem('${item.trash_id}')" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white border border-emerald-200 dark:border-emerald-800 transition flex items-center gap-1 shadow-sm">
+              <span>↩️</span> 还原快照
+            </button>
+            <button onclick="confirmPurgeTrash('${item.trash_id}')" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-rose-600 hover:text-white dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-rose-600 dark:hover:text-white border border-slate-200 dark:border-slate-700 transition">
+              彻底删除
+            </button>
+          </div>
+        `;
+        listEl.appendChild(row);
+      });
+    }
+
+    async function restoreTrashItem(trashId) {
+      try {
+        const res = await fetch(`/api/trash/restore/${encodeURIComponent(trashId)}`, { method: 'POST' });
+        const json = await res.json();
+        if (json.status === 'ok') {
+          await loadHistory();
+          await fetchTrashData();
+        } else {
+          alert('还原失败: ' + (json.detail || '未知错误'));
+        }
+      } catch (e) {
+        alert('网络错误: ' + e);
+      }
+    }
+
+    async function confirmPurgeTrash(trashId) {
+      const isAll = trashId === 'all';
+      const promptText = isAll 
+        ? '⚠️ 警告：确定要清空整个回收站吗？所有快照将被永久彻底抹去，无法再还原！' 
+        : '确定要彻底删除此快照吗？删除后将无法恢复。';
+      if (!confirm(promptText)) return;
+
+      try {
+        const url = isAll ? '/api/trash' : `/api/trash/${encodeURIComponent(trashId)}`;
+        const res = await fetch(url, { method: 'DELETE' });
+        const json = await res.json();
+        if (json.status === 'ok') {
+          await fetchTrashData();
+        } else {
+          alert('彻底删除失败: ' + (json.detail || '未知错误'));
+        }
+      } catch (e) {
+        alert('网络错误: ' + e);
+      }
+    }
+
+    function setDateRangePreset(preset) {
+      const today = new Date().toISOString().slice(0, 10);
+      const startEl = document.getElementById('rangeStartDate');
+      const endEl = document.getElementById('rangeEndDate');
+
+      if (preset === 'all') {
+        if (historyDataCache.length > 0) {
+          const dates = historyDataCache.map(x => x.date).filter(Boolean).sort();
+          startEl.value = dates[0] || today;
+          endEl.value = dates[dates.length - 1] || today;
+        } else {
+          startEl.value = '';
+          endEl.value = '';
+        }
+      } else if (preset === 'today') {
+        startEl.value = today;
+        endEl.value = today;
+      } else if (preset === '7d') {
+        const d = new Date();
+        d.setDate(d.getDate() - 7);
+        startEl.value = d.toISOString().slice(0, 10);
+        endEl.value = today;
+      } else if (preset === '30d') {
+        const d = new Date();
+        d.setDate(d.getDate() - 30);
+        startEl.value = d.toISOString().slice(0, 10);
+        endEl.value = today;
+      }
+    }
+
+    async function confirmDeleteDateRange() {
+      const startDate = document.getElementById('rangeStartDate').value;
+      const endDate = document.getElementById('rangeEndDate').value;
+      if (!startDate && !endDate) {
+        alert('请选择起始日期或结束日期');
+        return;
+      }
+
+      const label = (startDate && endDate) 
+        ? `${startDate} 至 ${endDate}` 
+        : (startDate ? `从 ${startDate} 起的所有快照` : `截至 ${endDate} 的所有快照`);
+
+      if (!confirm(`确定要将【${label}】范围内的快照移入回收站吗？\n\n已删除快照将在回收站中保留 30 天，支持随时一键还原。`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/snapshots/delete-range', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ start_date: startDate || null, end_date: endDate || null })
+        });
+        const json = await res.json();
+        if (json.status === 'ok') {
+          closeSnapshotModal();
+          await loadHistory();
+          await fetchTrashData();
+          alert(`✅ ${json.message || '选定范围快照已成功移入回收站'}`);
+        } else {
+          alert('删除失败: ' + (json.detail || '未知错误'));
+        }
+      } catch (e) {
+        alert('网络请求失败: ' + e);
+      }
+    }
+
     async function confirmDeleteSnapshot(identifier) {
       if (!identifier) return;
-      const isLatest = identifier === 'latest';
-      const msg = isLatest 
-        ? '确定要撤销并删除最近一次记录的历史快照吗？' 
-        : `确定要删除此快照记录 (${identifier}) 吗？此操作不可恢复。`;
-      if (!confirm(msg)) return;
+      if (!confirm(`确定要将此快照记录移入回收站吗？\n\n快照将在回收站中保留 30 天，到期前可随时一键恢复。`)) return;
 
       try {
         const res = await fetch(`/api/snapshot/${encodeURIComponent(identifier)}`, { method: 'DELETE' });
@@ -1406,32 +1710,12 @@ def index_html():
         if (json.status === 'ok') {
           closeSnapshotModal();
           await loadHistory();
-          renderDeleteSnapshotModal();
+          await fetchTrashData();
         } else {
-          alert('删除快照失败: ' + (json.detail || '未知错误'));
+          alert('删除失败: ' + (json.detail || '未知错误'));
         }
       } catch (e) {
-        alert('删除快照网络错误: ' + e);
-      }
-    }
-
-    async function confirmClearAllSnapshots() {
-      if (!confirm('⚠️ 警告：确定要清空全部历史快照吗？这将永久抹去所有的快照历史记录！')) return;
-      if (!confirm('请再次确认：清空后将从零开始记录，是否继续？')) return;
-
-      try {
-        const res = await fetch('/api/snapshots', { method: 'DELETE' });
-        const json = await res.json();
-        if (json.status === 'ok') {
-          closeSnapshotModal();
-          closeDeleteSnapshotModal();
-          await loadHistory();
-          alert('✅ 所有历史快照已成功清空。');
-        } else {
-          alert('清空快照失败: ' + (json.detail || '未知错误'));
-        }
-      } catch (e) {
-        alert('清空快照网络错误: ' + e);
+        alert('网络错误: ' + e);
       }
     }
 
@@ -1439,8 +1723,8 @@ def index_html():
     document.getElementById('snapshotModal').addEventListener('click', (e) => {
       if (e.target.id === 'snapshotModal') closeSnapshotModal();
     });
-    document.getElementById('deleteSnapshotModal').addEventListener('click', (e) => {
-      if (e.target.id === 'deleteSnapshotModal') closeDeleteSnapshotModal();
+    document.getElementById('snapshotManagerModal').addEventListener('click', (e) => {
+      if (e.target.id === 'snapshotManagerModal') closeSnapshotManagerModal();
     });
     document.getElementById('verifyModal').addEventListener('click', (e) => {
       if (e.target.id === 'verifyModal') closeVerifyModal();
@@ -1455,7 +1739,7 @@ def index_html():
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closeSnapshotModal();
-        closeDeleteSnapshotModal();
+        closeSnapshotManagerModal();
         closeVerifyModal();
         closeStockModal();
         closeCashModal();

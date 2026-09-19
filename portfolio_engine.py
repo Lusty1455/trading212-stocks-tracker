@@ -3,12 +3,17 @@
 from __future__ import annotations
 import json
 import os
+import time
+import math
+import uuid
 from datetime import datetime, date
 from typing import Dict, Any, List, Optional
 from market_data import get_stock_quote, get_fx_rate
 
 PORTFOLIO_FILE = os.path.join(os.path.dirname(__file__), "portfolio.json")
 HISTORY_FILE = os.path.join(os.path.dirname(__file__), "history.json")
+HISTORY_TRASH_FILE = os.path.join(os.path.dirname(__file__), "history_trash.json")
+TRASH_RETENTION_SECONDS = 30 * 86400  # 30 days retention
 
 
 def get_default_portfolio() -> Dict[str, Any]:
@@ -507,10 +512,70 @@ def get_snapshot_detail(identifier: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def delete_snapshot(identifier: str) -> bool:
+def clean_expired_trash(trash: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Filter out deleted snapshots older than 30 days (auto-purge)."""
+    now = time.time()
+    valid = []
+    for item in trash:
+        deleted_ts = item.get("deleted_timestamp", now)
+        age_seconds = now - deleted_ts
+        if age_seconds <= TRASH_RETENTION_SECONDS:
+            remaining_days = max(1, math.ceil((TRASH_RETENTION_SECONDS - age_seconds) / 86400))
+            item["days_remaining"] = remaining_days
+            valid.append(item)
+    return valid
+
+
+def get_trash() -> List[Dict[str, Any]]:
+    """Load deleted snapshots from recycle bin, automatically purging expired records (>30 days)."""
+    if not os.path.exists(HISTORY_TRASH_FILE):
+        return []
+    try:
+        with open(HISTORY_TRASH_FILE, "r", encoding="utf-8") as f:
+            trash = json.load(f)
+    except Exception:
+        return []
+
+    valid = clean_expired_trash(trash)
+    # If any expired items were cleaned, persist updated trash atomically
+    if len(valid) != len(trash):
+        save_trash(valid)
+
+    # Sort newest deleted first
+    valid.sort(key=lambda x: x.get("deleted_timestamp", 0), reverse=True)
+    return valid
+
+
+def save_trash(trash: List[Dict[str, Any]]) -> None:
+    """Atomically write recycle bin data to disk."""
+    tmp_file = f"{HISTORY_TRASH_FILE}.tmp"
+    with open(tmp_file, "w", encoding="utf-8") as f:
+        json.dump(trash, f, indent=2, ensure_ascii=False)
+    os.replace(tmp_file, HISTORY_TRASH_FILE)
+
+
+def move_to_trash(snapshot: Dict[str, Any]) -> str:
+    """Move a snapshot into the recycle bin with 30 days retention."""
+    trash = get_trash()
+    now_dt = datetime.now()
+    now_ts = time.time()
+    trash_id = f"trash_{now_dt.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
+    entry = {
+        "trash_id": trash_id,
+        "deleted_at": now_dt.strftime("%Y-%m-%d %H:%M:%S"),
+        "deleted_timestamp": now_ts,
+        "days_remaining": 30,
+        "snapshot": snapshot,
+    }
+    trash.insert(0, entry)
+    save_trash(trash)
+    return trash_id
+
+
+def delete_snapshot(identifier: str, soft_delete: bool = True) -> bool:
     """
     Delete a snapshot by ID, timestamp, date, or index (or 'latest').
-    Saves the updated history atomically to history.json.
+    If soft_delete is True, moves it to the recycle bin (30-day retention).
     """
     history = get_history()
     if not history:
@@ -541,23 +606,110 @@ def delete_snapshot(identifier: str) -> bool:
                 pass
 
     if target_idx is not None and 0 <= target_idx < len(history):
-        history.pop(target_idx)
+        removed = history.pop(target_idx)
         tmp_file = f"{HISTORY_FILE}.tmp"
         with open(tmp_file, "w", encoding="utf-8") as f:
             json.dump(history, f, indent=2, ensure_ascii=False)
         os.replace(tmp_file, HISTORY_FILE)
+        if soft_delete:
+            move_to_trash(removed)
         return True
 
     return False
 
 
-def clear_all_snapshots() -> bool:
-    """Clear all historical snapshots."""
+def delete_snapshots_by_date_range(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    soft_delete: bool = True,
+) -> int:
+    """
+    Delete snapshots whose date is within [start_date, end_date] (inclusive).
+    Supports open-ended range if start_date or end_date is omitted.
+    If soft_delete is True, moves deleted records to the recycle bin.
+    """
+    history = get_history()
+    if not history:
+        return 0
+
+    kept = []
+    deleted = []
+    for item in history:
+        d = item.get("date", "")
+        match = True
+        if start_date and d < start_date:
+            match = False
+        if end_date and d > end_date:
+            match = False
+
+        if match:
+            deleted.append(item)
+        else:
+            kept.append(item)
+
+    if deleted:
+        tmp_file = f"{HISTORY_FILE}.tmp"
+        with open(tmp_file, "w", encoding="utf-8") as f:
+            json.dump(kept, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_file, HISTORY_FILE)
+        if soft_delete:
+            for snap in deleted:
+                move_to_trash(snap)
+
+    return len(deleted)
+
+
+def restore_snapshot_from_trash(trash_id: str) -> bool:
+    """Restore a snapshot from the recycle bin back to history.json."""
+    trash = get_trash()
+    target_idx = None
+    for i, entry in enumerate(trash):
+        if entry.get("trash_id") == trash_id:
+            target_idx = i
+            break
+        snap = entry.get("snapshot", {})
+        if snap.get("id") == trash_id or snap.get("timestamp") == trash_id:
+            target_idx = i
+            break
+
+    if target_idx is None:
+        return False
+
+    entry = trash.pop(target_idx)
+    save_trash(trash)
+
+    history = get_history()
+    history.append(entry["snapshot"])
+    # Sort chronologically by date and timestamp
+    history.sort(key=lambda x: (x.get("date", ""), x.get("timestamp", "")))
+
     tmp_file = f"{HISTORY_FILE}.tmp"
     with open(tmp_file, "w", encoding="utf-8") as f:
-        json.dump([], f, indent=2, ensure_ascii=False)
+        json.dump(history, f, indent=2, ensure_ascii=False)
     os.replace(tmp_file, HISTORY_FILE)
     return True
+
+
+def purge_trash(trash_id: Optional[str] = None) -> int:
+    """Permanently delete one or all items from the recycle bin."""
+    trash = get_trash()
+    if not trash:
+        return 0
+
+    if not trash_id or trash_id == "all":
+        count = len(trash)
+        save_trash([])
+        return count
+    else:
+        new_trash = [entry for entry in trash if entry.get("trash_id") != trash_id]
+        count = len(trash) - len(new_trash)
+        save_trash(new_trash)
+        return count
+
+
+def clear_all_snapshots(soft_delete: bool = True) -> int:
+    """Clear all historical snapshots by moving them to recycle bin."""
+    return delete_snapshots_by_date_range(None, None, soft_delete=soft_delete)
 
 
 def verify_portfolio_integrity() -> Dict[str, Any]:

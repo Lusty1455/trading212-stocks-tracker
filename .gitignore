@@ -16,6 +16,7 @@ env/
 # User-specific financial data & logs (local privacy preservation)
 portfolio.json
 history.json
+history_trash.json
 snapshot.log
 *.log
 *.tmp
