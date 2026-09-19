@@ -232,6 +232,88 @@ def api_get_verify():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+CHANGELOG_DATA = [
+    {
+        "version": "v1.3.1",
+        "date": "2026-09-19",
+        "commit": "1303df6",
+        "title": "卡片边界无裁切优化与 Popover 定位对齐",
+        "is_latest": True,
+        "items": [
+            {"type": "fix", "icon": "🐛", "tag": "边界修复", "text": "解绑外层资产卡片的 overflow-hidden，彻底解决标题 Popover 提示向上弹出时被卡片边框切断的问题"},
+            {"type": "feat", "icon": "📐", "tag": "定位体系", "text": "引入 .pop-bottom.pop-left 定位规则与专用向上指示三角，卡片及弹窗标题说明统一向下自然延展并对准图标中心"},
+            {"type": "ui", "icon": "🎨", "tag": "视觉一致", "text": "卡片表头独立增设 relative z-20 堆叠层级，横向滚动表格采用 rounded-b-2xl 保持圆角美观与平滑滚动"}
+        ]
+    },
+    {
+        "version": "v1.3.0",
+        "date": "2026-09-18",
+        "commit": "1c3422a",
+        "title": "引入信息图标 ⓘ 与精简 Popover 交互",
+        "is_latest": False,
+        "items": [
+            {"type": "ui", "icon": "ℹ️", "tag": "文案精简", "text": "精简持仓明细、现金账户、历史快照、日期范围删除等超长辅助文案，以统一精致的圆形 i 图标呈现"},
+            {"type": "feat", "icon": "👆", "tag": "触控友好", "text": "支持鼠标悬停（Hover）及移动端触控点击常驻，点击外部空白区域自动优雅收起"},
+            {"type": "ui", "icon": "🌓", "tag": "主题适配", "text": "双配色高对比度适配：深色模式使用 #1e293b 背景与发光边框，浅色模式采用纯净白底与柔和阴影"}
+        ]
+    },
+    {
+        "version": "v1.2.0",
+        "date": "2026-09-18",
+        "commit": "363fa12",
+        "title": "快照回收站机制与日期范围批量删除",
+        "is_latest": False,
+        "items": [
+            {"type": "feat", "icon": "♻️", "tag": "安全回收站", "text": "废弃物理直接删除机制，被删快照安全转入回收站暂存，支持随时一键全量还原，杜绝误操作风险"},
+            {"type": "feat", "icon": "⏳", "tag": "30天生命周期", "text": "底层集成 TTL 自动过期引擎，进入回收站超过 30 天的废弃快照由系统自动执行安全物理抹除"},
+            {"type": "feat", "icon": "📅", "tag": "范围批量删除", "text": "支持任意选定起止日期的快照批量删除，并提供「全选全部、仅今天、近7天、近30天」一键预设筛选"}
+        ]
+    },
+    {
+        "version": "v1.1.0",
+        "date": "2026-09-18",
+        "commit": "14d6703",
+        "title": "历史快照管理面板与持仓穿透透视",
+        "is_latest": False,
+        "items": [
+            {"type": "feat", "icon": "⚙️", "tag": "管理弹窗", "text": "历史快照卡片头部新增「快照管理」与「记录当前快照」双入口，大幅提升资产记录管理效率"},
+            {"type": "feat", "icon": "🔍", "tag": "明细穿透", "text": "点击历史记录行任意位置，即刻弹出记录时刻的完整股票代码、每股现价、持仓市值与现金详情"},
+            {"type": "feat", "icon": "🗑️", "tag": "单条管理", "text": "在明细穿透弹窗底部提供快捷安全删除操作，便于迅速剔除脏数据与异常快照"}
+        ]
+    },
+    {
+        "version": "v1.0.1",
+        "date": "2026-09-18",
+        "commit": "0ad63ff",
+        "title": "黑白双配色主题一键切换与全局适配",
+        "is_latest": False,
+        "items": [
+            {"type": "ui", "icon": "☀️/🌙", "tag": "双主题切换", "text": "顶部导航栏新增纯图标切换按钮（☀️/🌙），带防误触悬浮 Tooltip 提示"},
+            {"type": "ui", "icon": "🎨", "tag": "全量适配", "text": "覆盖指标卡、饼图/柱状图容器、持仓明细表、历史快照表及所有模态弹窗的双主题配色深度调优"},
+            {"type": "perf", "icon": "⚡", "tag": "无感持久化", "text": "基于 localStorage 与 HTML 根节点预执行脚本，刷新页面瞬时应用主题，告别白屏刺眼闪烁"}
+        ]
+    },
+    {
+        "version": "v1.0.0",
+        "date": "2026-09-18",
+        "commit": "7576f09",
+        "title": "股票每日涨跌统计与资产分析小助手初始发布",
+        "is_latest": False,
+        "items": [
+            {"type": "security", "icon": "🔒", "tag": "本地隐私", "text": "零券商绑定、免券商密码与 API Key，纯本地配置文件 portfolio.json 计算，保障绝对资金隐私安全"},
+            {"type": "feat", "icon": "💷", "tag": "GBP基准统一", "text": "多币种股票与多币种现金实时汇率折算，剥离汇率波动干扰，真实追踪股票组合内生涨跌"},
+            {"type": "feat", "icon": "📊", "tag": "双模式看板", "text": "同时提供 Terminal 终端实时彩色看板与现代化 Web 交互看板 (FastAPI + Tailwind + Chart.js, Port 26212)"},
+            {"type": "feat", "icon": "📷", "tag": "自动化快照", "text": "自动化收盘快照记录与纽约交易时段智能识别备注，提供历史估值追溯与双向交叉核验对账"}
+        ]
+    }
+]
+
+
+@app.get("/api/changelog")
+def api_get_changelog():
+    return {"status": "ok", "changelog": CHANGELOG_DATA}
+
+
 @app.get("/", response_class=HTMLResponse)
 def index_html():
     return """<!DOCTYPE html>
@@ -463,6 +545,63 @@ def index_html():
   </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased">
+  <!-- Sidebar Backdrop (点击外部遮罩关闭) -->
+  <div id="sidebarBackdrop" onclick="closeSidebar()" class="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 hidden transition-opacity duration-300 opacity-0"></div>
+
+  <!-- Gemini-style Left Sidebar (只放置更新日志按钮) -->
+  <aside id="appSidebar" class="fixed top-0 left-0 bottom-0 w-64 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-r border-slate-200 dark:border-slate-800 z-50 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col shadow-2xl">
+    <!-- Sidebar Header -->
+    <div class="h-16 px-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+      <div class="flex items-center space-x-2.5">
+        <img src="/favicon.svg" alt="App Logo" class="w-7 h-7 rounded-lg shadow-sm" />
+        <span class="text-sm font-bold text-slate-900 dark:text-white">功能菜单</span>
+      </div>
+      <!-- 边栏内部关闭按钮 -->
+      <div class="relative flex items-center group">
+        <button onclick="closeSidebar()" class="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white flex items-center justify-center transition active:scale-95 cursor-pointer" aria-label="关闭边栏">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="3" ry="3"/>
+            <line x1="9" y1="3" x2="9" y2="21"/>
+          </svg>
+        </button>
+        <div class="absolute right-full mr-2 hidden group-hover:block bg-black text-white text-xs px-2.5 py-1 rounded-full whitespace-nowrap shadow-xl font-medium pointer-events-none z-50">
+          关闭边栏
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar Content: 严格遵从指令，只将更新日志按钮放到边栏内 -->
+    <div class="p-3 flex-1 overflow-y-auto space-y-2">
+      <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-2 pt-1 pb-0.5">
+        版本与记录
+      </div>
+      <!-- 更新日志专属按钮 -->
+      <button onclick="openChangelogModal(); closeSidebar();" class="w-full flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-blue-50/80 to-indigo-50/40 hover:from-blue-100 hover:to-indigo-100/70 dark:from-slate-800/80 dark:to-blue-950/30 dark:hover:from-slate-800 dark:hover:to-blue-900/50 text-slate-800 dark:text-slate-100 border border-blue-200/70 dark:border-slate-700/80 transition-all duration-150 shadow-sm hover:shadow group text-left cursor-pointer">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm shadow-sm group-hover:scale-105 transition-transform">
+            📜
+          </div>
+          <div>
+            <div class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span>更新日志</span>
+              <span class="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">v1.3.1</span>
+            </div>
+            <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">版本功能与演进记录</div>
+          </div>
+        </div>
+        <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Sidebar Footer -->
+    <div class="p-3 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500 font-mono flex items-center justify-between">
+      <span>Git 提交记录</span>
+      <span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">1303df6</span>
+    </div>
+  </aside>
+
   <!-- Navbar -->
   <header class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 backdrop-blur sticky top-0 z-40 transition-colors">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -471,6 +610,19 @@ def index_html():
         <div>
           <h1 class="text-base font-bold text-slate-900 dark:text-white leading-tight">每日股票资产分析看板</h1>
           <p class="text-xs text-slate-500 dark:text-slate-400">隐私安全 · 无需券商密码 · 多币种汇率自动折算</p>
+        </div>
+
+        <!-- 边栏开关按钮 (Gemini 风格: 位于标题旁，悬浮显示黑色药丸提示) -->
+        <div class="relative flex items-center group ml-1">
+          <button id="sidebarToggleBtn" onclick="toggleSidebar()" class="w-9 h-9 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition active:scale-95 cursor-pointer" aria-label="切换边栏">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="18" x="3" y="3" rx="3" ry="3"/>
+              <line x1="9" y1="3" x2="9" y2="21"/>
+            </svg>
+          </button>
+          <div id="sidebarTooltip" class="absolute left-full ml-2 hidden group-hover:block bg-black text-white text-xs px-3 py-1.5 rounded-full whitespace-nowrap shadow-xl font-medium pointer-events-none z-50">
+            展开边栏
+          </div>
         </div>
       </div>
       <div class="flex items-center space-x-2">
@@ -1017,6 +1169,44 @@ def index_html():
       <div class="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800 text-xs">
         <span class="text-slate-400 dark:text-slate-500 font-mono" id="mgrStatusSummary">始终本地私有存储</span>
         <button onclick="closeSnapshotManagerModal()" class="py-1.5 px-5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium transition">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Changelog Modal (系统更新日志弹窗) -->
+  <div id="changelogModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 transition-colors max-h-[90vh] flex flex-col">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 flex items-center justify-center text-xl">
+            📜
+          </div>
+          <div>
+            <h3 class="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+              <span>系统版本更新日志</span>
+              <span class="text-xs font-mono font-semibold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">Changelog</span>
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">结合 Git 提交历史整理 · 记录每次版本功能演进与变动</p>
+          </div>
+        </div>
+        <button onclick="closeChangelogModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-2xl leading-none cursor-pointer">&times;</button>
+      </div>
+
+      <!-- Modal Body (Timeline) -->
+      <div id="changelogTimelineContainer" class="flex-1 overflow-y-auto pr-1 space-y-4">
+        <!-- Dynamically rendered via renderChangelog() from CHANGELOG_DATA -->
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800 text-xs shrink-0">
+        <div class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-mono">
+          <span>📦</span>
+          <span>本地 Git 同步记录 · 共 6 个版本发布</span>
+        </div>
+        <button onclick="closeChangelogModal()" class="py-1.5 px-5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium transition cursor-pointer">
+          关闭
+        </button>
       </div>
     </div>
   </div>
@@ -1928,6 +2118,179 @@ def index_html():
     document.getElementById('cashModal').addEventListener('click', (e) => {
       if (e.target.id === 'cashModal') closeCashModal();
     });
+    document.getElementById('changelogModal').addEventListener('click', (e) => {
+      if (e.target.id === 'changelogModal') closeChangelogModal();
+    });
+
+    // ===== Sidebar (边栏) 交互逻辑 =====
+    let isSidebarOpen = false;
+
+    function toggleSidebar() {
+      isSidebarOpen = !isSidebarOpen;
+      updateSidebarUI();
+    }
+
+    function openSidebar() {
+      isSidebarOpen = true;
+      updateSidebarUI();
+    }
+
+    function closeSidebar() {
+      isSidebarOpen = false;
+      updateSidebarUI();
+    }
+
+    function updateSidebarUI() {
+      const sidebar = document.getElementById('appSidebar');
+      const backdrop = document.getElementById('sidebarBackdrop');
+      const tooltip = document.getElementById('sidebarTooltip');
+      if (!sidebar) return;
+
+      if (isSidebarOpen) {
+        sidebar.classList.remove('-translate-x-full');
+        sidebar.classList.add('translate-x-0');
+        if (backdrop) {
+          backdrop.classList.remove('hidden');
+          requestAnimationFrame(() => {
+            backdrop.classList.remove('opacity-0');
+            backdrop.classList.add('opacity-100');
+          });
+        }
+        if (tooltip) tooltip.innerText = '关闭边栏';
+      } else {
+        sidebar.classList.remove('translate-x-0');
+        sidebar.classList.add('-translate-x-full');
+        if (backdrop) {
+          backdrop.classList.remove('opacity-100');
+          backdrop.classList.add('opacity-0');
+          setTimeout(() => {
+            if (!isSidebarOpen) backdrop.classList.add('hidden');
+          }, 300);
+        }
+        if (tooltip) tooltip.innerText = '展开边栏';
+      }
+    }
+
+    // ===== 更新日志 (Changelog) 数据与逻辑 =====
+    const CHANGELOG_DATA = [
+      {
+        version: "v1.3.1",
+        date: "2026-09-19",
+        commit: "1303df6",
+        title: "卡片边界无裁切优化与 Popover 定位对齐",
+        is_latest: true,
+        items: [
+          { type: "fix", icon: "🐛", tag: "边界修复", text: "解绑外层资产卡片的 overflow-hidden，彻底解决标题 Popover 提示向上弹出时被卡片边框切断的问题" },
+          { type: "feat", icon: "📐", tag: "定位体系", text: "引入 .pop-bottom.pop-left 定位规则与专用向上指示三角，卡片及弹窗标题说明统一向下自然延展并对准图标中心" },
+          { type: "ui", icon: "🎨", tag: "视觉一致", text: "卡片表头独立增设 relative z-20 堆叠层级，横向滚动表格采用 rounded-b-2xl 保持圆角美观与平滑滚动" }
+        ]
+      },
+      {
+        version: "v1.3.0",
+        date: "2026-09-18",
+        commit: "1c3422a",
+        title: "引入信息图标 ⓘ 与精简 Popover 交互",
+        is_latest: false,
+        items: [
+          { type: "ui", icon: "ℹ️", tag: "文案精简", text: "精简持仓明细、现金账户、历史快照、日期范围删除等超长辅助文案，以统一精致的圆形 i 图标呈现" },
+          { type: "feat", icon: "👆", tag: "触控友好", text: "支持鼠标悬停（Hover）及移动端触控点击常驻，点击外部空白区域自动优雅收起" },
+          { type: "ui", icon: "🌓", tag: "主题适配", text: "双配色高对比度适配：深色模式使用 #1e293b 背景与发光边框，浅色模式采用纯净白底与柔和阴影" }
+        ]
+      },
+      {
+        version: "v1.2.0",
+        date: "2026-09-18",
+        commit: "363fa12",
+        title: "快照回收站机制与日期范围批量删除",
+        is_latest: false,
+        items: [
+          { type: "feat", icon: "♻️", tag: "安全回收站", text: "废弃物理直接删除机制，被删快照安全转入回收站暂存，支持随时一键全量还原，杜绝误操作风险" },
+          { type: "feat", icon: "⏳", tag: "30天生命周期", text: "底层集成 TTL 自动过期引擎，进入回收站超过 30 天的废弃快照由系统自动执行安全物理抹除" },
+          { type: "feat", icon: "📅", tag: "范围批量删除", text: "支持任意选定起止日期的快照批量删除，并提供「全选全部、仅今天、近7天、近30天」一键预设筛选" }
+        ]
+      },
+      {
+        version: "v1.1.0",
+        date: "2026-09-18",
+        commit: "14d6703",
+        title: "历史快照管理面板与持仓穿透透视",
+        is_latest: false,
+        items: [
+          { type: "feat", icon: "⚙️", tag: "管理弹窗", text: "历史快照卡片头部新增「快照管理」与「记录当前快照」双入口，大幅提升资产记录管理效率" },
+          { type: "feat", icon: "🔍", tag: "明细穿透", text: "点击历史记录行任意位置，即刻弹出记录时刻的完整股票代码、每股现价、持仓市值与现金详情" },
+          { type: "feat", icon: "🗑️", tag: "单条管理", text: "在明细穿透弹窗底部提供快捷安全删除操作，便于迅速剔除脏数据与异常快照" }
+        ]
+      },
+      {
+        version: "v1.0.1",
+        date: "2026-09-18",
+        commit: "0ad63ff",
+        title: "黑白双配色主题一键切换与全局适配",
+        is_latest: false,
+        items: [
+          { type: "ui", icon: "☀️/🌙", tag: "双主题切换", text: "顶部导航栏新增纯图标切换按钮（☀️/🌙），带防误触悬浮 Tooltip 提示" },
+          { type: "ui", icon: "🎨", tag: "全量适配", text: "覆盖指标卡、饼图/柱状图容器、持仓明细表、历史快照表及所有模态弹窗的双主题配色深度调优" },
+          { type: "perf", icon: "⚡", tag: "无感持久化", text: "基于 localStorage 与 HTML 根节点预执行脚本，刷新页面瞬时应用主题，告别白屏刺眼闪烁" }
+        ]
+      },
+      {
+        version: "v1.0.0",
+        date: "2026-09-18",
+        commit: "7576f09",
+        title: "股票每日涨跌统计与资产分析小助手初始发布",
+        is_latest: false,
+        items: [
+          { type: "security", icon: "🔒", tag: "本地隐私", text: "零券商绑定、免券商密码与 API Key，纯本地配置文件 portfolio.json 计算，保障绝对资金隐私安全" },
+          { type: "feat", icon: "💷", tag: "GBP基准统一", text: "多币种股票与多币种现金实时汇率折算，剥离汇率波动干扰，真实追踪股票组合内生涨跌" },
+          { type: "feat", icon: "📊", tag: "双模式看板", text: "同时提供 Terminal 终端实时彩色看板与现代化 Web 交互看板 (FastAPI + Tailwind + Chart.js, Port 26212)" },
+          { type: "feat", icon: "📷", tag: "自动化快照", text: "自动化收盘快照记录与纽约交易时段智能识别备注，提供历史估值追溯与双向交叉核验对账" }
+        ]
+      }
+    ];
+
+    function renderChangelog() {
+      const container = document.getElementById('changelogTimelineContainer');
+      if (!container) return;
+      container.innerHTML = CHANGELOG_DATA.map((ver, idx) => `
+        <div class="relative pl-6 pb-2 before:absolute before:left-2 before:top-2.5 before:bottom-0 before:w-0.5 ${idx === CHANGELOG_DATA.length - 1 ? 'before:hidden' : 'before:bg-slate-200 dark:before:bg-slate-800'}">
+          <div class="absolute left-0 top-1.5 w-4 h-4 rounded-full border-2 ${ver.is_latest ? 'border-blue-500 bg-blue-500 shadow-sm shadow-blue-500/50' : 'border-slate-400 dark:border-slate-600 bg-white dark:bg-slate-900'}"></div>
+          <div class="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-2.5 shadow-xs">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/60 dark:border-slate-800/80 pb-2">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-bold text-slate-900 dark:text-white font-mono">${ver.version}</span>
+                ${ver.is_latest ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300/40 font-semibold">当前最新</span>' : ''}
+                <span class="text-xs font-semibold text-slate-800 dark:text-slate-200">${ver.title}</span>
+              </div>
+              <div class="flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500 font-mono">
+                <span>${ver.date}</span>
+                <span>·</span>
+                <span class="bg-slate-200 dark:bg-slate-700/80 px-1.5 py-0.5 rounded text-slate-700 dark:text-slate-300 font-mono">${ver.commit}</span>
+              </div>
+            </div>
+            <ul class="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+              ${ver.items.map(item => `
+                <li class="flex items-start gap-2">
+                  <span class="shrink-0 mt-0.5">${item.icon}</span>
+                  <div>
+                    <strong class="font-semibold text-slate-900 dark:text-slate-100">[${item.tag}]</strong>
+                    <span>${item.text}</span>
+                  </div>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function openChangelogModal() {
+      renderChangelog();
+      document.getElementById('changelogModal').classList.remove('hidden');
+    }
+
+    function closeChangelogModal() {
+      document.getElementById('changelogModal').classList.add('hidden');
+    }
 
     // Popover click-outside / toggle listener for touch & desktop
     document.addEventListener('click', (e) => {
@@ -1947,6 +2310,8 @@ def index_html():
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         document.querySelectorAll('.popover-container.active').forEach(c => c.classList.remove('active'));
+        if (isSidebarOpen) closeSidebar();
+        closeChangelogModal();
         closeSnapshotModal();
         closeSnapshotManagerModal();
         closeVerifyModal();
