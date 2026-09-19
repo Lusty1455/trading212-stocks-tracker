@@ -397,16 +397,20 @@ def index_html():
     /* Popover bottom alignment */
     .popover-tooltip.pop-bottom {
       bottom: auto;
-      top: calc(100% + 7px);
+      top: calc(100% + 8px);
+      left: 50%;
       transform: translateX(-50%) translateY(-4px);
     }
     .popover-container:hover .popover-tooltip.pop-bottom,
-    .popover-container.active .popover-tooltip.pop-bottom {
+    .popover-container.active .popover-tooltip.pop-bottom,
+    .popover-container:focus-within .popover-tooltip.pop-bottom {
       transform: translateX(-50%) translateY(0);
     }
     .popover-tooltip.pop-bottom::after {
       top: auto;
       bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
     }
     .dark .popover-tooltip.pop-bottom::after {
       border-color: transparent transparent #1e293b transparent;
@@ -415,18 +419,46 @@ def index_html():
       border-color: transparent transparent #ffffff transparent;
     }
 
-    /* Popover left alignment */
+    /* Popover left alignment (upwards, left-anchored) */
     .popover-tooltip.pop-left {
-      left: 0;
+      left: -6px;
+      right: auto;
       transform: translateY(4px);
     }
     .popover-container:hover .popover-tooltip.pop-left,
-    .popover-container.active .popover-tooltip.pop-left {
+    .popover-container.active .popover-tooltip.pop-left,
+    .popover-container:focus-within .popover-tooltip.pop-left {
       transform: translateY(0);
     }
     .popover-tooltip.pop-left::after {
-      left: 10px;
+      left: 12px;
       transform: none;
+    }
+
+    /* Combined: Bottom + Left (anchored to top-left of tooltip, expanding downwards and rightwards) */
+    .popover-tooltip.pop-bottom.pop-left {
+      bottom: auto;
+      top: calc(100% + 8px);
+      left: -6px;
+      right: auto;
+      transform: translateY(-4px);
+    }
+    .popover-container:hover .popover-tooltip.pop-bottom.pop-left,
+    .popover-container.active .popover-tooltip.pop-bottom.pop-left,
+    .popover-container:focus-within .popover-tooltip.pop-bottom.pop-left {
+      transform: translateY(0);
+    }
+    .popover-tooltip.pop-bottom.pop-left::after {
+      top: auto;
+      bottom: 100%;
+      left: 12px;
+      transform: none;
+    }
+    .dark .popover-tooltip.pop-bottom.pop-left::after {
+      border-color: transparent transparent #1e293b transparent;
+    }
+    html:not(.dark) .popover-tooltip.pop-bottom.pop-left::after {
+      border-color: transparent transparent #ffffff transparent;
     }
   </style>
 </head>
@@ -588,13 +620,13 @@ def index_html():
     </div>
 
     <!-- Holdings Table -->
-    <div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm transition-colors">
-      <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+    <div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-colors">
+      <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between relative z-20">
         <div class="flex items-center gap-1.5">
           <h2 class="text-base font-bold text-slate-900 dark:text-white">股票持仓明细 (Stock Holdings)</h2>
           <div class="popover-container">
             <button type="button" class="popover-btn" aria-label="查看说明">i</button>
-            <div class="popover-tooltip pop-left">每只股票在美股/英股的实时价格、折算英镑价值及当日涨跌幅统计</div>
+            <div class="popover-tooltip pop-bottom pop-left">每只股票在美股/英股的实时价格、折算英镑价值及当日涨跌幅统计</div>
           </div>
         </div>
         <div class="text-xs text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700/50">
@@ -602,7 +634,7 @@ def index_html():
         </div>
       </div>
 
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto rounded-b-2xl">
         <table class="w-full text-left border-collapse text-sm">
           <thead>
             <tr class="bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
@@ -628,13 +660,13 @@ def index_html():
     </div>
 
     <!-- Cash Balances Section -->
-    <div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm transition-colors">
+    <div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm transition-colors relative z-10">
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-1.5">
           <h2 class="text-sm font-bold text-slate-900 dark:text-white">现金账户 (Cash Balances)</h2>
           <div class="popover-container">
             <button type="button" class="popover-btn" aria-label="查看说明">i</button>
-            <div class="popover-tooltip pop-left">多币种现金持有与实时外汇折算，统一以英镑 (GBP) 计价核算</div>
+            <div class="popover-tooltip pop-bottom pop-left">多币种现金持有与实时外汇折算，统一以英镑 (GBP) 计价核算</div>
           </div>
         </div>
       </div>
@@ -644,13 +676,13 @@ def index_html():
     </div>
 
     <!-- History Snapshots Table -->
-    <div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm transition-colors">
-      <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
+    <div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-colors">
+      <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4 relative z-20">
         <div class="flex items-center gap-2">
           <h2 class="text-base font-bold text-slate-900 dark:text-white">📜 每日历史快照 (Daily Snapshots)</h2>
           <div class="popover-container">
             <button type="button" class="popover-btn" aria-label="查看说明">i</button>
-            <div class="popover-tooltip pop-left">精确记录每次快照时刻的系统时间与纽约时间；点击表格中任意一行即可展开当时持仓仓位与英镑估值明细。</div>
+            <div class="popover-tooltip pop-bottom pop-left">精确记录每次快照时刻的系统时间与纽约时间；点击表格中任意一行即可展开当时持仓仓位与英镑估值明细。</div>
           </div>
           <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-cyan-50 dark:bg-cyan-950/80 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/60 font-medium">点击行看明细</span>
         </div>
@@ -663,7 +695,7 @@ def index_html():
           </button>
         </div>
       </div>
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto rounded-b-2xl">
         <table class="w-full text-left border-collapse text-sm">
           <thead>
             <tr class="bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
@@ -887,7 +919,7 @@ def index_html():
             <h3 class="font-bold text-lg text-slate-900 dark:text-white">快照管理与回收站</h3>
             <div class="popover-container">
               <button type="button" class="popover-btn" aria-label="查看说明">i</button>
-              <div class="popover-tooltip pop-bottom">支持按日期范围批量删除快照；已删除快照在回收站安全保留 30 天，支持随时一键还原。</div>
+              <div class="popover-tooltip pop-bottom pop-left">支持按日期范围批量删除快照；已删除快照在回收站安全保留 30 天，支持随时一键还原。</div>
             </div>
           </div>
         </div>
@@ -905,7 +937,7 @@ def index_html():
           <span id="tabTrashCountBadge" class="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono">0</span>
           <span class="popover-container ml-0.5" onclick="event.stopPropagation()">
             <span class="popover-btn" title="查看规则">i</span>
-            <span class="popover-tooltip pop-bottom">已删除快照保留 30 天，到期系统将自动物理清除。保留期间支持一键还原。</span>
+            <span class="popover-tooltip pop-bottom pop-left">已删除快照保留 30 天，到期系统将自动物理清除。保留期间支持一键还原。</span>
           </span>
         </button>
       </div>
@@ -921,7 +953,7 @@ def index_html():
               </span>
               <div class="popover-container">
                 <button type="button" class="popover-btn" aria-label="查看说明">i</button>
-                <div class="popover-tooltip pop-left">选定区间内的快照将安全移入「回收站」保留 30 天，在此期间支持随时一键全量还原。</div>
+                <div class="popover-tooltip pop-bottom pop-left">选定区间内的快照将安全移入「回收站」保留 30 天，在此期间支持随时一键全量还原。</div>
               </div>
             </div>
             <div class="flex items-center gap-1.5">
@@ -967,7 +999,7 @@ def index_html():
             <span class="font-medium">回收站快照（30天自动清理）</span>
             <div class="popover-container">
               <button type="button" class="popover-btn" aria-label="查看说明">i</button>
-              <div class="popover-tooltip pop-bottom">在此安全保留 30 天，到期系统将自动物理清除。保留期间支持一键还原至有效快照列表。</div>
+              <div class="popover-tooltip pop-bottom pop-left">在此安全保留 30 天，到期系统将自动物理清除。保留期间支持一键还原至有效快照列表。</div>
             </div>
           </div>
           <button onclick="confirmPurgeTrash('all')" class="shrink-0 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white transition font-medium text-[11px] shadow-sm">
@@ -1185,7 +1217,7 @@ def index_html():
       const todayPnlPctEl = document.getElementById('todayPnlPct');
       const pnlSign = data.daily_pnl > 0 ? '+' : '';
       todayPnlEl.innerText = `${pnlSign}${formatCurrency(data.daily_pnl, sym)}`;
-      todayPnlPctEl.innerHTML = `涨跌幅: <span class="font-semibold">${pnlSign}${data.daily_pnl_pct.toFixed(2)}%</span> <span class="popover-container"><span class="popover-btn" title="查看计算口径">i</span><span class="popover-tooltip">以基准货币英镑 (GBP) 统一计价测算今日持仓涨跌幅度，不计汇率变动干扰。</span></span>`;
+      todayPnlPctEl.innerHTML = `涨跌幅: <span class="font-semibold">${pnlSign}${data.daily_pnl_pct.toFixed(2)}%</span> <span class="popover-container"><span class="popover-btn" title="查看计算口径">i</span><span class="popover-tooltip pop-bottom pop-left">以基准货币英镑 (GBP) 统一计价测算今日持仓涨跌幅度，不计汇率变动干扰。</span></span>`;
 
       // Weights
       document.getElementById('stockWeight').innerText = data.stock_weight_pct.toFixed(1) + '%';
