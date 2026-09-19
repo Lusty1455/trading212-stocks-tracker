@@ -507,6 +507,59 @@ def get_snapshot_detail(identifier: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def delete_snapshot(identifier: str) -> bool:
+    """
+    Delete a snapshot by ID, timestamp, date, or index (or 'latest').
+    Saves the updated history atomically to history.json.
+    """
+    history = get_history()
+    if not history:
+        return False
+
+    target_idx = None
+    if identifier == "latest":
+        target_idx = len(history) - 1
+    else:
+        for i, item in enumerate(history):
+            if (
+                item.get("id") == identifier
+                or item.get("timestamp") == identifier
+                or item.get("date") == identifier
+            ):
+                target_idx = i
+                break
+        if target_idx is None:
+            try:
+                num = int(identifier)
+                if 1 <= num <= len(history):
+                    target_idx = num - 1
+                elif 0 <= num < len(history):
+                    target_idx = num
+                elif -len(history) <= num < 0:
+                    target_idx = len(history) + num
+            except ValueError:
+                pass
+
+    if target_idx is not None and 0 <= target_idx < len(history):
+        history.pop(target_idx)
+        tmp_file = f"{HISTORY_FILE}.tmp"
+        with open(tmp_file, "w", encoding="utf-8") as f:
+            json.dump(history, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_file, HISTORY_FILE)
+        return True
+
+    return False
+
+
+def clear_all_snapshots() -> bool:
+    """Clear all historical snapshots."""
+    tmp_file = f"{HISTORY_FILE}.tmp"
+    with open(tmp_file, "w", encoding="utf-8") as f:
+        json.dump([], f, indent=2, ensure_ascii=False)
+    os.replace(tmp_file, HISTORY_FILE)
+    return True
+
+
 def verify_portfolio_integrity() -> Dict[str, Any]:
     """
     Run bidirectional cross-verification on all holdings and cash:
