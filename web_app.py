@@ -289,6 +289,145 @@ def index_html():
       background-color: #f8fafc;
       color: #0f172a;
     }
+
+    /* Refined Info Icon & Popover System */
+    .popover-container {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      vertical-align: middle;
+    }
+    .popover-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 15px;
+      height: 15px;
+      border-radius: 9999px;
+      font-size: 10px;
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+      outline: none;
+      padding: 0;
+    }
+    .dark .popover-btn {
+      background-color: rgba(51, 65, 85, 0.7);
+      color: #94a3b8;
+      border: 1px solid rgba(71, 85, 105, 0.7);
+    }
+    .dark .popover-btn:hover, .dark .popover-container.active .popover-btn {
+      background-color: rgba(59, 130, 246, 0.25);
+      color: #60a5fa;
+      border-color: rgba(96, 165, 250, 0.5);
+      transform: scale(1.1);
+    }
+    html:not(.dark) .popover-btn {
+      background-color: #f1f5f9;
+      color: #64748b;
+      border: 1px solid #cbd5e1;
+    }
+    html:not(.dark) .popover-btn:hover, html:not(.dark) .popover-container.active .popover-btn {
+      background-color: #eff6ff;
+      color: #2563eb;
+      border-color: #93c5fd;
+      transform: scale(1.1);
+    }
+
+    .popover-tooltip {
+      position: absolute;
+      bottom: calc(100% + 7px);
+      left: 50%;
+      transform: translateX(-50%) translateY(4px);
+      width: max-content;
+      max-width: 270px;
+      padding: 7px 11px;
+      border-radius: 10px;
+      font-size: 11.5px;
+      line-height: 1.45;
+      font-weight: 400;
+      letter-spacing: normal;
+      text-align: left;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+      z-index: 100;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.15);
+      white-space: normal;
+      word-break: break-word;
+    }
+    .popover-container:hover .popover-tooltip,
+    .popover-container.active .popover-tooltip,
+    .popover-container:focus-within .popover-tooltip {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateX(-50%) translateY(0);
+    }
+    .popover-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 5px;
+      border-style: solid;
+    }
+    .dark .popover-tooltip {
+      background-color: #1e293b;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+    .dark .popover-tooltip::after {
+      border-color: #1e293b transparent transparent transparent;
+    }
+    html:not(.dark) .popover-tooltip {
+      background-color: #ffffff;
+      color: #334155;
+      border: 1px solid #e2e8f0;
+    }
+    html:not(.dark) .popover-tooltip::after {
+      border-color: #ffffff transparent transparent transparent;
+    }
+
+    /* Popover bottom alignment */
+    .popover-tooltip.pop-bottom {
+      bottom: auto;
+      top: calc(100% + 7px);
+      transform: translateX(-50%) translateY(-4px);
+    }
+    .popover-container:hover .popover-tooltip.pop-bottom,
+    .popover-container.active .popover-tooltip.pop-bottom {
+      transform: translateX(-50%) translateY(0);
+    }
+    .popover-tooltip.pop-bottom::after {
+      top: auto;
+      bottom: 100%;
+    }
+    .dark .popover-tooltip.pop-bottom::after {
+      border-color: transparent transparent #1e293b transparent;
+    }
+    html:not(.dark) .popover-tooltip.pop-bottom::after {
+      border-color: transparent transparent #ffffff transparent;
+    }
+
+    /* Popover left alignment */
+    .popover-tooltip.pop-left {
+      left: 0;
+      transform: translateY(4px);
+    }
+    .popover-container:hover .popover-tooltip.pop-left,
+    .popover-container.active .popover-tooltip.pop-left {
+      transform: translateY(0);
+    }
+    .popover-tooltip.pop-left::after {
+      left: 10px;
+      transform: none;
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased">
@@ -451,9 +590,12 @@ def index_html():
     <!-- Holdings Table -->
     <div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm transition-colors">
       <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-        <div>
+        <div class="flex items-center gap-1.5">
           <h2 class="text-base font-bold text-slate-900 dark:text-white">股票持仓明细 (Stock Holdings)</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">每只股票在美股/英股的实时价格、折算英镑价值及当日涨跌幅统计</p>
+          <div class="popover-container">
+            <button type="button" class="popover-btn" aria-label="查看说明">i</button>
+            <div class="popover-tooltip pop-left">每只股票在美股/英股的实时价格、折算英镑价值及当日涨跌幅统计</div>
+          </div>
         </div>
         <div class="text-xs text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700/50">
           共 <span id="holdingsCount" class="font-bold text-slate-900 dark:text-white">0</span> 个持仓标的
@@ -488,9 +630,12 @@ def index_html():
     <!-- Cash Balances Section -->
     <div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm transition-colors">
       <div class="flex items-center justify-between mb-4">
-        <div>
+        <div class="flex items-center gap-1.5">
           <h2 class="text-sm font-bold text-slate-900 dark:text-white">现金账户 (Cash Balances)</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">多币种现金持有与实时外汇折算</p>
+          <div class="popover-container">
+            <button type="button" class="popover-btn" aria-label="查看说明">i</button>
+            <div class="popover-tooltip pop-left">多币种现金持有与实时外汇折算，统一以英镑 (GBP) 计价核算</div>
+          </div>
         </div>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="cashCards">
@@ -501,12 +646,13 @@ def index_html():
     <!-- History Snapshots Table -->
     <div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm transition-colors">
       <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div class="flex items-center gap-2">
-            <h2 class="text-base font-bold text-slate-900 dark:text-white">📜 每日历史快照 (Daily Snapshots)</h2>
-            <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-cyan-50 dark:bg-cyan-950/80 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/60 font-medium">精确系统小时 · 纽约时间备注 · 点击行看仓位</span>
+        <div class="flex items-center gap-2">
+          <h2 class="text-base font-bold text-slate-900 dark:text-white">📜 每日历史快照 (Daily Snapshots)</h2>
+          <div class="popover-container">
+            <button type="button" class="popover-btn" aria-label="查看说明">i</button>
+            <div class="popover-tooltip pop-left">精确记录每次快照时刻的系统时间与纽约时间；点击表格中任意一行即可展开当时持仓仓位与英镑估值明细。</div>
           </div>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">精确记录每次快照时刻的系统时间与纽约时间，点击表格中任意一行即可展开当时持仓仓位与英镑估值明细</p>
+          <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-cyan-50 dark:bg-cyan-950/80 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/60 font-medium">点击行看明细</span>
         </div>
         <div class="flex items-center gap-2">
           <button onclick="openSnapshotManagerModal()" title="历史快照管理与回收站" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 dark:border-slate-700 text-xs font-semibold shadow-sm transition hover:scale-105 active:scale-95">
@@ -735,11 +881,14 @@ def index_html():
     <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 transition-colors">
       <!-- Modal Header -->
       <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-        <div class="flex items-center gap-2.5">
-          <span class="text-2xl">⚙️</span>
-          <div>
+        <div class="flex items-center gap-2">
+          <span class="text-xl">⚙️</span>
+          <div class="flex items-center gap-1.5">
             <h3 class="font-bold text-lg text-slate-900 dark:text-white">快照管理与回收站</h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400">支持选定日期范围批量删除；已删除快照在回收站保留 30 天，支持一键还原</p>
+            <div class="popover-container">
+              <button type="button" class="popover-btn" aria-label="查看说明">i</button>
+              <div class="popover-tooltip pop-bottom">支持按日期范围批量删除快照；已删除快照在回收站安全保留 30 天，支持随时一键还原。</div>
+            </div>
           </div>
         </div>
         <button onclick="closeSnapshotManagerModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg">&times;</button>
@@ -748,12 +897,16 @@ def index_html():
       <!-- Tabs / View Switcher -->
       <div class="flex border-b border-slate-200 dark:border-slate-800 gap-1 pb-1">
         <button id="tabActiveSnapshotsBtn" onclick="switchManagerTab('snapshots')" class="py-2 px-4 text-xs font-bold rounded-lg transition flex items-center gap-1.5 border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/60 dark:bg-blue-950/40">
-          <span>📅</span> <span>快照列表与日期范围删除</span>
+          <span>📅</span> <span>快照管理</span>
           <span id="tabActiveCountBadge" class="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-blue-100 dark:bg-blue-900/80 text-blue-700 dark:text-blue-300 font-mono">0</span>
         </button>
         <button id="tabTrashBtn" onclick="switchManagerTab('trash')" class="py-2 px-4 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
-          <span>♻️</span> <span>回收站 (30天保留)</span>
+          <span>♻️</span> <span>回收站</span>
           <span id="tabTrashCountBadge" class="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono">0</span>
+          <span class="popover-container ml-0.5" onclick="event.stopPropagation()">
+            <span class="popover-btn" title="查看规则">i</span>
+            <span class="popover-tooltip pop-bottom">已删除快照保留 30 天，到期系统将自动物理清除。保留期间支持一键还原。</span>
+          </span>
         </button>
       </div>
 
@@ -762,9 +915,15 @@ def index_html():
         <!-- Date Range Deletion Box -->
         <div class="p-3.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2.5">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-              <span>📅</span> 选定日期范围删除 (移入回收站)
-            </span>
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                <span>📅</span> 选定日期范围删除
+              </span>
+              <div class="popover-container">
+                <button type="button" class="popover-btn" aria-label="查看说明">i</button>
+                <div class="popover-tooltip pop-left">选定区间内的快照将安全移入「回收站」保留 30 天，在此期间支持随时一键全量还原。</div>
+              </div>
+            </div>
             <div class="flex items-center gap-1.5">
               <button onclick="setDateRangePreset('all')" class="px-2 py-0.5 text-[11px] rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-blue-600 transition">全选全部</button>
               <button onclick="setDateRangePreset('today')" class="px-2 py-0.5 text-[11px] rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-blue-600 transition">仅今天</button>
@@ -785,7 +944,6 @@ def index_html():
               <span>🗑️</span> 删除该范围快照
             </button>
           </div>
-          <p class="text-[11px] text-slate-400 dark:text-slate-500">💡 提示：选定区间内的快照将安全移入「回收站」保留30天，可随时一键恢复。</p>
         </div>
 
         <!-- Snapshots List -->
@@ -803,10 +961,14 @@ def index_html():
       <!-- Tab 2: Recycle Bin (30-day Retention) -->
       <div id="tabContentTrash" class="hidden space-y-3">
         <!-- Trash Notice Banner -->
-        <div class="p-3 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 rounded-xl flex items-center justify-between gap-2 text-xs">
-          <div class="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+        <div class="p-2.5 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 rounded-xl flex items-center justify-between gap-2 text-xs">
+          <div class="flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
             <span class="text-base">♻️</span>
-            <span>快照在回收站保留 <strong>30 天</strong>，到期自动永久删除。支持随时一键还原。</span>
+            <span class="font-medium">回收站快照（30天自动清理）</span>
+            <div class="popover-container">
+              <button type="button" class="popover-btn" aria-label="查看说明">i</button>
+              <div class="popover-tooltip pop-bottom">在此安全保留 30 天，到期系统将自动物理清除。保留期间支持一键还原至有效快照列表。</div>
+            </div>
           </div>
           <button onclick="confirmPurgeTrash('all')" class="shrink-0 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white transition font-medium text-[11px] shadow-sm">
             清空回收站
@@ -1023,8 +1185,7 @@ def index_html():
       const todayPnlPctEl = document.getElementById('todayPnlPct');
       const pnlSign = data.daily_pnl > 0 ? '+' : '';
       todayPnlEl.innerText = `${pnlSign}${formatCurrency(data.daily_pnl, sym)}`;
-      todayPnlEl.className = `mt-2 text-3xl font-extrabold ${data.daily_pnl > 0 ? 'text-emerald-600 dark:text-emerald-400' : (data.daily_pnl < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white')}`;
-      todayPnlPctEl.innerHTML = `涨跌幅: <span class="font-semibold">${pnlSign}${data.daily_pnl_pct.toFixed(2)}%</span> (以英镑计价，不计汇率波动)`;
+      todayPnlPctEl.innerHTML = `涨跌幅: <span class="font-semibold">${pnlSign}${data.daily_pnl_pct.toFixed(2)}%</span> <span class="popover-container"><span class="popover-btn" title="查看计算口径">i</span><span class="popover-tooltip">以基准货币英镑 (GBP) 统一计价测算今日持仓涨跌幅度，不计汇率变动干扰。</span></span>`;
 
       // Weights
       document.getElementById('stockWeight').innerText = data.stock_weight_pct.toFixed(1) + '%';
@@ -1736,8 +1897,24 @@ def index_html():
       if (e.target.id === 'cashModal') closeCashModal();
     });
 
+    // Popover click-outside / toggle listener for touch & desktop
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.popover-btn');
+      const allContainers = document.querySelectorAll('.popover-container.active');
+      if (btn) {
+        const container = btn.closest('.popover-container');
+        const isActive = container.classList.contains('active');
+        allContainers.forEach(c => c.classList.remove('active'));
+        if (!isActive) container.classList.add('active');
+        e.stopPropagation();
+      } else if (!e.target.closest('.popover-tooltip')) {
+        allContainers.forEach(c => c.classList.remove('active'));
+      }
+    });
+
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
+        document.querySelectorAll('.popover-container.active').forEach(c => c.classList.remove('active'));
         closeSnapshotModal();
         closeSnapshotManagerModal();
         closeVerifyModal();
