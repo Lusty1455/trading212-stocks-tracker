@@ -234,11 +234,26 @@ def api_get_verify():
 
 CHANGELOG_DATA = [
     {
+        "version": "v1.4.0",
+        "date": "2026-09-19",
+        "commit": "feat/db",
+        "title": "存储架构升级：引入存储适配器模式与 SQLite 数据库支持 (兼容 Cloudflare D1)",
+        "is_latest": True,
+        "items": [
+            {"type": "arch", "icon": "💾", "tag": "存储解耦", "text": "设计抽象存储适配器基类 BaseStorage，使业务计算引擎、快照归档与底层持久化彻底解耦"},
+            {"type": "feat", "icon": "📄", "tag": "保留纯JSON", "text": "通过 JSONStorage 适配器 100% 完整保留原有 portfolio.json / history.json 纯文本运行模式，向下完全兼容"},
+            {"type": "feat", "icon": "🚀", "tag": "SQLite引擎", "text": "新增 SQLiteStorage 适配器，零额外依赖运行于本地 portfolio.db 单文件数据库，开启 WAL 高性能并发模式"},
+            {"type": "cloud", "icon": "☁️", "tag": "Cloudflare D1", "text": "数据库表结构与 SQL 100% 同构契合 Cloudflare D1，内置 REST API 适配器支持随时直连边缘云端数据库"},
+            {"type": "tool", "icon": "🔄", "tag": "双向迁移CLI", "text": "提供 python main.py migrate 与 python main.py storage 指令，支持 JSON 与 SQLite 之间随时双向自由无损迁移"},
+            {"type": "feat", "icon": "🔀", "tag": "环境平滑切换", "text": "支持通过 STORAGE_BACKEND 环境变量（json / sqlite / cloudflare_d1）自由无缝切换活动存储引擎"}
+        ]
+    },
+    {
         "version": "v1.3.1",
         "date": "2026-09-19",
         "commit": "1303df6",
         "title": "卡片边界无裁切优化与 Popover 定位对齐",
-        "is_latest": True,
+        "is_latest": False,
         "items": [
             {"type": "fix", "icon": "🐛", "tag": "边界修复", "text": "解绑外层资产卡片的 overflow-hidden，彻底解决标题 Popover 提示向上弹出时被卡片边框切断的问题"},
             {"type": "feat", "icon": "📐", "tag": "定位体系", "text": "引入 .pop-bottom.pop-left 定位规则与专用向上指示三角，卡片及弹窗标题说明统一向下自然延展并对准图标中心"},
@@ -307,6 +322,15 @@ CHANGELOG_DATA = [
         ]
     }
 ]
+
+
+@app.get("/api/storage/status")
+def api_get_storage_status():
+    try:
+        from portfolio_engine import get_storage_stats
+        return {"status": "ok", "stats": get_storage_stats()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/changelog")
@@ -584,7 +608,7 @@ def index_html():
           <div>
             <div class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
               <span>更新日志</span>
-              <span class="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">v1.3.1</span>
+              <span class="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">v1.4.0</span>
             </div>
             <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">版本功能与演进记录</div>
           </div>
@@ -597,8 +621,8 @@ def index_html():
 
     <!-- Sidebar Footer -->
     <div class="p-3 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500 font-mono flex items-center justify-between">
-      <span>Git 提交记录</span>
-      <span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">1303df6</span>
+      <span>Git 分支记录</span>
+      <span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">feat/db</span>
     </div>
   </aside>
 
@@ -626,6 +650,16 @@ def index_html():
         </div>
       </div>
       <div class="flex items-center space-x-2">
+        <!-- 存储引擎状态指示 (SQLite / JSON) -->
+        <div class="relative group">
+          <div id="storageBadge" class="h-9 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 text-xs font-mono font-medium shadow-sm transition">
+            <span id="storageIcon">💾</span>
+            <span id="storageName">SQLite</span>
+          </div>
+          <div id="storageTooltip" class="absolute -bottom-8 left-1/2 -translate-x-1/2 hidden group-hover:block bg-slate-900 text-white text-[11px] px-2.5 py-1 rounded-md shadow-xl border border-slate-700 whitespace-nowrap pointer-events-none z-50 font-medium">
+            存储引擎: SQLite (portfolio.db)
+          </div>
+        </div>
         <!-- 切换黑白主题 (新增) -->
         <div class="relative group">
           <button id="themeToggleBtn" onclick="toggleTheme()" title="切换明亮/深色主题" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-amber-500 border border-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700 dark:text-slate-200 dark:hover:text-amber-400 dark:border-slate-700 flex items-center justify-center text-base transition shadow-sm hover:scale-105 active:scale-95">
@@ -1187,7 +1221,7 @@ def index_html():
               <span>系统版本更新日志</span>
               <span class="text-xs font-mono font-semibold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">Changelog</span>
             </h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">结合 Git 提交历史整理 · 记录每次版本功能演进与变动</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">结合 Git 提交历史整理 · 当前版本 v1.4.0 (支持 SQLite & Cloudflare D1)</p>
           </div>
         </div>
         <button onclick="closeChangelogModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-2xl leading-none cursor-pointer">&times;</button>
@@ -1202,7 +1236,7 @@ def index_html():
       <div class="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800 text-xs shrink-0">
         <div class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-mono">
           <span>📦</span>
-          <span>本地 Git 同步记录 · 共 6 个版本发布</span>
+          <span>本地 Git 同步记录 · 共 7 个版本发布</span>
         </div>
         <button onclick="closeChangelogModal()" class="py-1.5 px-5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium transition cursor-pointer">
           关闭
@@ -2174,11 +2208,26 @@ def index_html():
     // ===== 更新日志 (Changelog) 数据与逻辑 =====
     const CHANGELOG_DATA = [
       {
+        version: "v1.4.0",
+        date: "2026-09-19",
+        commit: "feat/db",
+        title: "存储架构升级：引入存储适配器模式与 SQLite 数据库支持 (兼容 Cloudflare D1)",
+        is_latest: true,
+        items: [
+          { type: "arch", icon: "💾", tag: "存储解耦", text: "设计抽象存储适配器基类 BaseStorage，使业务计算引擎、快照归档与底层持久化彻底解耦" },
+          { type: "feat", icon: "📄", tag: "保留纯JSON", text: "通过 JSONStorage 适配器 100% 完整保留原有 portfolio.json / history.json 纯文本运行模式，向下完全兼容" },
+          { type: "feat", icon: "🚀", tag: "SQLite引擎", text: "新增 SQLiteStorage 适配器，零额外依赖运行于本地 portfolio.db 单文件数据库，开启 WAL 高性能并发模式" },
+          { type: "cloud", icon: "☁️", tag: "Cloudflare D1", text: "数据库表结构与 SQL 100% 同构契合 Cloudflare D1，内置 REST API 适配器支持随时直连边缘云端数据库" },
+          { type: "tool", icon: "🔄", tag: "双向迁移CLI", text: "提供 python main.py migrate 与 python main.py storage 指令，支持 JSON 与 SQLite 之间随时双向自由无损迁移" },
+          { type: "feat", icon: "🔀", tag: "环境平滑切换", text: "支持通过 STORAGE_BACKEND 环境变量（json / sqlite / cloudflare_d1）自由无缝切换活动存储引擎" }
+        ]
+      },
+      {
         version: "v1.3.1",
         date: "2026-09-19",
         commit: "1303df6",
         title: "卡片边界无裁切优化与 Popover 定位对齐",
-        is_latest: true,
+        is_latest: false,
         items: [
           { type: "fix", icon: "🐛", tag: "边界修复", text: "解绑外层资产卡片的 overflow-hidden，彻底解决标题 Popover 提示向上弹出时被卡片边框切断的问题" },
           { type: "feat", icon: "📐", tag: "定位体系", text: "引入 .pop-bottom.pop-left 定位规则与专用向上指示三角，卡片及弹窗标题说明统一向下自然延展并对准图标中心" },
@@ -2320,10 +2369,40 @@ def index_html():
       }
     });
 
+    async function updateStorageUI() {
+      try {
+        const res = await fetch('/api/storage/status');
+        const json = await res.json();
+        if (json.status === 'ok') {
+          const stats = json.stats;
+          const iconEl = document.getElementById('storageIcon');
+          const nameEl = document.getElementById('storageName');
+          const tipEl = document.getElementById('storageTooltip');
+          if (stats.backend === 'sqlite') {
+            if (iconEl) iconEl.innerText = '💾';
+            if (nameEl) nameEl.innerText = 'SQLite';
+            if (tipEl) tipEl.innerText = `活动存储: SQLite (${stats.db_file}) · ${stats.counts.snapshots}条快照`;
+          } else if (stats.backend === 'cloudflare_d1') {
+            if (iconEl) iconEl.innerText = '☁️';
+            if (nameEl) nameEl.innerText = 'CF D1';
+            if (tipEl) tipEl.innerText = '活动存储: Cloudflare D1 边缘云数据库';
+          } else {
+            if (iconEl) iconEl.innerText = '📄';
+            if (nameEl) nameEl.innerText = 'JSON';
+            if (tipEl) tipEl.innerText = `活动存储: 纯文本 JSON (${stats.portfolio_file}) · ${stats.counts.snapshots}条快照`;
+          }
+        }
+      } catch (e) {
+        console.warn('Storage status fetch error:', e);
+      }
+    }
+
     // Theme initialization and periodic refresh every 60s
     initTheme();
     loadData();
+    updateStorageUI();
     setInterval(loadData, 60000);
+    setInterval(updateStorageUI, 60000);
   </script>
 </body>
 </html>

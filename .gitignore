@@ -17,6 +17,10 @@ env/
 portfolio.json
 history.json
 history_trash.json
+portfolio.db
+*.db
+*.db-wal
+*.db-shm
 snapshot.log
 *.log
 *.tmp

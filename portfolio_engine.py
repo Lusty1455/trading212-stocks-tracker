@@ -10,57 +10,28 @@ from datetime import datetime, date
 from typing import Dict, Any, List, Optional
 from market_data import get_stock_quote, get_fx_rate
 
-PORTFOLIO_FILE = os.path.join(os.path.dirname(__file__), "portfolio.json")
-HISTORY_FILE = os.path.join(os.path.dirname(__file__), "history.json")
-HISTORY_TRASH_FILE = os.path.join(os.path.dirname(__file__), "history_trash.json")
-TRASH_RETENTION_SECONDS = 30 * 86400  # 30 days retention
+import storage
+from storage import get_storage, set_storage_backend, migrate_storage
+
+PORTFOLIO_FILE = storage.PORTFOLIO_FILE
+HISTORY_FILE = storage.HISTORY_FILE
+HISTORY_TRASH_FILE = storage.HISTORY_TRASH_FILE
+TRASH_RETENTION_SECONDS = storage.TRASH_RETENTION_SECONDS
 
 
 def get_default_portfolio() -> Dict[str, Any]:
     """Default initial portfolio as described by user: 1 GBP cash + 11.7 GBP of GOOGL."""
-    return {
-        "base_currency": "GBP",
-        "cash": {
-            "GBP": 1.0,
-            "USD": 0.0
-        },
-        "holdings": [
-            {
-                "symbol": "GOOGL",
-                "name": "Alphabet Inc. (Class A)",
-                # Will be calculated if shares is None or 0
-                "shares": None,
-                "initial_amount": 11.7,
-                "initial_currency": "GBP",
-                "cost_basis": 11.7,
-                "cost_currency": "GBP",
-                "added_at": datetime.now().strftime("%Y-%m-%d")
-            }
-        ]
-    }
+    return storage.get_default_portfolio_dict()
 
 
 def load_portfolio() -> Dict[str, Any]:
-    """Load portfolio from portfolio.json, or initialize default if not present."""
-    if not os.path.exists(PORTFOLIO_FILE):
-        data = get_default_portfolio()
-        save_portfolio(data)
-        return data
-    try:
-        with open(PORTFOLIO_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        data = get_default_portfolio()
-        save_portfolio(data)
-        return data
+    """Load portfolio using active storage adapter (JSON / SQLite / Cloudflare D1)."""
+    return get_storage().load_portfolio()
 
 
 def save_portfolio(data: Dict[str, Any]) -> None:
-    """Save portfolio data atomically to portfolio.json."""
-    tmp_file = f"{PORTFOLIO_FILE}.tmp"
-    with open(tmp_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-    os.replace(tmp_file, PORTFOLIO_FILE)
+    """Save portfolio using active storage adapter (JSON / SQLite / Cloudflare D1)."""
+    get_storage().save_portfolio(data)
 
 
 def add_or_update_holding(
@@ -437,13 +408,7 @@ def record_daily_snapshot() -> Dict[str, Any]:
         "cash": cash_snapshot
     }
 
-    history: List[Dict[str, Any]] = []
-    if os.path.exists(HISTORY_FILE):
-        try:
-            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-                history = json.load(f)
-        except Exception:
-            history = []
+    history = get_storage().load_history()
 
     # If recorded within last 3 minutes, update last entry to avoid rapid spam, otherwise append
     replaced = False
@@ -463,21 +428,14 @@ def record_daily_snapshot() -> Dict[str, Any]:
     # Sort by timestamp
     history.sort(key=lambda x: x.get("timestamp", x.get("date", "")))
 
-    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(history, f, indent=2, ensure_ascii=False)
+    get_storage().save_history(history)
 
     return snapshot
 
 
 def get_history() -> List[Dict[str, Any]]:
-    """Load historical snapshots."""
-    if not os.path.exists(HISTORY_FILE):
-        return []
-    try:
-        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return []
+    """Load historical snapshots using active storage adapter."""
+    return get_storage().load_history()
 
 
 def get_snapshot_detail(identifier: str) -> Optional[Dict[str, Any]]:
@@ -527,31 +485,13 @@ def clean_expired_trash(trash: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def get_trash() -> List[Dict[str, Any]]:
-    """Load deleted snapshots from recycle bin, automatically purging expired records (>30 days)."""
-    if not os.path.exists(HISTORY_TRASH_FILE):
-        return []
-    try:
-        with open(HISTORY_TRASH_FILE, "r", encoding="utf-8") as f:
-            trash = json.load(f)
-    except Exception:
-        return []
-
-    valid = clean_expired_trash(trash)
-    # If any expired items were cleaned, persist updated trash atomically
-    if len(valid) != len(trash):
-        save_trash(valid)
-
-    # Sort newest deleted first
-    valid.sort(key=lambda x: x.get("deleted_timestamp", 0), reverse=True)
-    return valid
+    """Load deleted snapshots from recycle bin using active storage adapter."""
+    return get_storage().load_trash()
 
 
 def save_trash(trash: List[Dict[str, Any]]) -> None:
-    """Atomically write recycle bin data to disk."""
-    tmp_file = f"{HISTORY_TRASH_FILE}.tmp"
-    with open(tmp_file, "w", encoding="utf-8") as f:
-        json.dump(trash, f, indent=2, ensure_ascii=False)
-    os.replace(tmp_file, HISTORY_TRASH_FILE)
+    """Save recycle bin data using active storage adapter."""
+    get_storage().save_trash(trash)
 
 
 def move_to_trash(snapshot: Dict[str, Any]) -> str:
@@ -607,10 +547,7 @@ def delete_snapshot(identifier: str, soft_delete: bool = True) -> bool:
 
     if target_idx is not None and 0 <= target_idx < len(history):
         removed = history.pop(target_idx)
-        tmp_file = f"{HISTORY_FILE}.tmp"
-        with open(tmp_file, "w", encoding="utf-8") as f:
-            json.dump(history, f, indent=2, ensure_ascii=False)
-        os.replace(tmp_file, HISTORY_FILE)
+        get_storage().save_history(history)
         if soft_delete:
             move_to_trash(removed)
         return True
@@ -648,10 +585,7 @@ def delete_snapshots_by_date_range(
             kept.append(item)
 
     if deleted:
-        tmp_file = f"{HISTORY_FILE}.tmp"
-        with open(tmp_file, "w", encoding="utf-8") as f:
-            json.dump(kept, f, indent=2, ensure_ascii=False)
-        os.replace(tmp_file, HISTORY_FILE)
+        get_storage().save_history(kept)
         if soft_delete:
             for snap in deleted:
                 move_to_trash(snap)
@@ -660,7 +594,7 @@ def delete_snapshots_by_date_range(
 
 
 def restore_snapshot_from_trash(trash_id: str) -> bool:
-    """Restore a snapshot from the recycle bin back to history.json."""
+    """Restore a snapshot from the recycle bin back to active history."""
     trash = get_trash()
     target_idx = None
     for i, entry in enumerate(trash):
@@ -683,10 +617,7 @@ def restore_snapshot_from_trash(trash_id: str) -> bool:
     # Sort chronologically by date and timestamp
     history.sort(key=lambda x: (x.get("date", ""), x.get("timestamp", "")))
 
-    tmp_file = f"{HISTORY_FILE}.tmp"
-    with open(tmp_file, "w", encoding="utf-8") as f:
-        json.dump(history, f, indent=2, ensure_ascii=False)
-    os.replace(tmp_file, HISTORY_FILE)
+    get_storage().save_history(history)
     return True
 
 
@@ -812,3 +743,15 @@ def verify_portfolio_integrity() -> Dict[str, Any]:
             "cash_value": data["cash_value"]
         }
     }
+
+
+def get_storage_stats() -> Dict[str, Any]:
+    """Return runtime metadata and statistics of active storage adapter."""
+    return get_storage().get_stats()
+
+
+def switch_storage_backend(backend: str) -> Dict[str, Any]:
+    """Switch active storage backend between 'json', 'sqlite', and 'cloudflare_d1'."""
+    adapter = set_storage_backend(backend)
+    return adapter.get_stats()
+
